@@ -113,11 +113,13 @@ func TestTicketRepository_Update(t *testing.T) {
 		defer cleanup()
 
 		ticketID := createTestTicket(t, 1001, "Original", 100)
-
-		updates := map[string]interface{}{
-			"event_name":   "Updated Concert",
-			"price":        3000.0,
-			"max_per_user": 8,
+		eventName := "Updated Concert"
+		price := 3000.0
+		maxPerUser := 8
+		updates := repository.UpdateTicketParams{
+			EventName:  &eventName,
+			Price:      &price,
+			MaxPerUser: &maxPerUser,
 		}
 
 		updated, err := repo.Update(ctx, ticketID, updates)
@@ -133,7 +135,10 @@ func TestTicketRepository_Update(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		updates := map[string]interface{}{"event_name": "Won't Update"}
+		eventName := "Won't Update"
+		updates := repository.UpdateTicketParams{
+			EventName: &eventName,
+		}
 
 		_, err := repo.Update(ctx, 99999, updates)
 
@@ -141,25 +146,12 @@ func TestTicketRepository_Update(t *testing.T) {
 		assert.Equal(t, apperrors.ErrTicketNotFound, err)
 	})
 
-	t.Run("InvalidField", func(t *testing.T) {
-		cleanup := setupTestWithTruncate(t)
-		defer cleanup()
-
-		ticketID := createTestTicket(t, 1002, "Concert", 100)
-		updates := map[string]interface{}{"total_stock": 200}
-
-		_, err := repo.Update(ctx, ticketID, updates)
-
-		require.Error(t, err)
-		assert.Equal(t, apperrors.ErrInvalidInput, err)
-	})
-
 	t.Run("EmptyMap", func(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
 		ticketID := createTestTicket(t, 1003, "Concert", 100)
-		updates := map[string]interface{}{}
+		updates := repository.UpdateTicketParams{}
 
 		_, err := repo.Update(ctx, ticketID, updates)
 

@@ -12,11 +12,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type UpdateTicketParams struct {
+	EventName  *string
+	Price      *float64
+	MaxPerUser *int
+}
+
 type TicketRepository interface {
 	Create(ctx context.Context, ticket *model.Ticket) (*model.Ticket, error)
 	List(ctx context.Context) ([]*model.Ticket, error)
 	FindByID(ctx context.Context, id int) (*model.Ticket, error)
-	Update(ctx context.Context, id int, ticket map[string]interface{}) (*model.Ticket, error)
+	Update(ctx context.Context, id int, ticket UpdateTicketParams) (*model.Ticket, error)
 	Delete(ctx context.Context, id int) error
 
 	// Transaction methods
@@ -179,23 +185,26 @@ func (r *TicketRepositoryImpl) FindByIDWithLock(ctx context.Context, tx pgx.Tx, 
 	return &ticket, nil
 }
 
-func (r *TicketRepositoryImpl) Update(ctx context.Context, id int, values map[string]interface{}) (*model.Ticket, error) {
-	allowedFields := map[string]bool{
-		"event_name":   true,
-		"price":        true,
-		"max_per_user": true,
-	}
-
+func (r *TicketRepositoryImpl) Update(ctx context.Context, id int, params UpdateTicketParams) (*model.Ticket, error) {
 	sets := []string{}
 	args := []interface{}{}
 	argPos := 1
 
-	for column, value := range values {
-		if ok := allowedFields[column]; !ok {
-			return nil, apperrors.ErrInvalidInput
-		}
-		sets = append(sets, fmt.Sprintf("%s = $%d", column, argPos))
-		args = append(args, value)
+	if params.EventName != nil {
+		sets = append(sets, fmt.Sprintf("event_name = $%d", argPos))
+		args = append(args, *params.EventName)
+		argPos++
+	}
+
+	if params.Price != nil {
+		sets = append(sets, fmt.Sprintf("price = $%d", argPos))
+		args = append(args, *params.Price)
+		argPos++
+	}
+
+	if params.MaxPerUser != nil {
+		sets = append(sets, fmt.Sprintf("max_per_user = $%d", argPos))
+		args = append(args, *params.MaxPerUser)
 		argPos++
 	}
 
