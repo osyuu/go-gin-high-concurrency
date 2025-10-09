@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go-gin-high-concurrency/config"
 	"go-gin-high-concurrency/internal/database"
+	"go-gin-high-concurrency/internal/model"
 	"log"
 	"os"
 	"testing"
@@ -130,6 +131,25 @@ func createTestUser(t *testing.T, name, email string) int {
 	err := testDB.QueryRow(ctx, query, name, email).Scan(&id)
 	if err != nil {
 		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	return id
+}
+
+func createTestOrder(t *testing.T, userID, ticketID int, quantity int, totalPrice float64, status model.OrderStatus) int {
+	t.Helper()
+	ctx := context.Background()
+
+	query := `
+		INSERT INTO orders (user_id, ticket_id, quantity, total_price, status)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id
+	`
+
+	var id int
+	err := testDB.QueryRow(ctx, query, userID, ticketID, quantity, totalPrice, status).Scan(&id)
+	if err != nil {
+		t.Fatalf("Failed to create test order: %v", err)
 	}
 
 	return id

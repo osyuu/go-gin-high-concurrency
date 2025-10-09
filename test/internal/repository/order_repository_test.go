@@ -1,0 +1,270 @@
+package repository
+
+import (
+	"context"
+	"testing"
+
+	"go-gin-high-concurrency/internal/model"
+	"go-gin-high-concurrency/internal/repository"
+	apperrors "go-gin-high-concurrency/pkg/app_errors"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestOrderRepository_Create(t *testing.T) {
+	repo := repository.NewOrderRepository(getTestDB())
+	ctx := context.Background()
+
+	t.Run("Success", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		ticketID := createTestTicket(t, 1, "Test Event", 100)
+
+		order := &model.Order{
+			UserID:     userID,
+			TicketID:   ticketID,
+			Quantity:   1,
+			TotalPrice: 100.0,
+			Status:     model.OrderStatusPending,
+		}
+
+		tx, txCleanup := setupTestWithTransaction(t)
+		defer txCleanup()
+
+		createdOrder, err := repo.Create(ctx, tx, order)
+
+		require.NoError(t, err)
+		assert.NotZero(t, createdOrder.ID)
+		assert.Equal(t, userID, createdOrder.UserID)
+		assert.Equal(t, ticketID, createdOrder.TicketID)
+		assert.Equal(t, 1, createdOrder.Quantity)
+		assert.Equal(t, 100.0, createdOrder.TotalPrice)
+		assert.Equal(t, model.OrderStatusPending, createdOrder.Status)
+		assert.NotZero(t, createdOrder.CreatedAt)
+		assert.NotZero(t, createdOrder.UpdatedAt)
+	})
+}
+
+func TestOrderRepository_FindByID(t *testing.T) {
+	repo := repository.NewOrderRepository(getTestDB())
+	ctx := context.Background()
+
+	t.Run("Success", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		ticketID := createTestTicket(t, 1002, "Test Event", 50)
+		orderID := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
+
+		found, err := repo.FindByID(ctx, orderID)
+
+		require.NoError(t, err)
+		assert.Equal(t, orderID, found.ID)
+		assert.Equal(t, userID, found.UserID)
+		assert.Equal(t, ticketID, found.TicketID)
+	})
+
+	t.Run("NotFound", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		_, err := repo.FindByID(ctx, 99999)
+
+		require.Error(t, err)
+		assert.Equal(t, apperrors.ErrOrderNotFound, err)
+	})
+}
+
+func TestOrderRepository_FindByUserID(t *testing.T) {
+	repo := repository.NewOrderRepository(getTestDB())
+	ctx := context.Background()
+
+	t.Run("Success", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		user1 := createTestUser(t, "User 1", "user1@example.com")
+		user2 := createTestUser(t, "User 2", "user2@example.com")
+		ticketID := createTestTicket(t, 1001, "Concert", 100)
+
+		orderID1 := createTestOrder(t, user1, ticketID, 1, 100.0, model.OrderStatusPending)
+		createTestOrder(t, user2, ticketID, 1, 100.0, model.OrderStatusPending)
+
+		orders, err := repo.FindByUserID(ctx, user1)
+
+		require.NoError(t, err)
+		assert.Len(t, orders, 1)
+		assert.Equal(t, orderID1, orders[0].ID)
+	})
+
+	t.Run("EmptyList", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		orders, err := repo.FindByUserID(ctx, userID)
+
+		require.NoError(t, err)
+		assert.Empty(t, orders)
+	})
+}
+
+func TestOrderRepository_FindByTicketID(t *testing.T) {
+	repo := repository.NewOrderRepository(getTestDB())
+	ctx := context.Background()
+
+	t.Run("Success", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "User", "user@example.com")
+		ticket1 := createTestTicket(t, 1001, "Concert A", 100)
+		ticket2 := createTestTicket(t, 1002, "Concert B", 100)
+
+		orderID1 := createTestOrder(t, userID, ticket1, 1, 100.0, model.OrderStatusPending)
+		createTestOrder(t, userID, ticket2, 1, 100.0, model.OrderStatusPending)
+
+		orders, err := repo.FindByTicketID(ctx, ticket1)
+
+		require.NoError(t, err)
+		assert.Len(t, orders, 1)
+		assert.Equal(t, orderID1, orders[0].ID)
+	})
+
+	t.Run("EmptyList", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		ticketID := createTestTicket(t, 1001, "Concert", 100)
+		orders, err := repo.FindByTicketID(ctx, ticketID)
+
+		require.NoError(t, err)
+		assert.Empty(t, orders)
+	})
+}
+
+func TestOrderRepository_List(t *testing.T) {
+	repo := repository.NewOrderRepository(getTestDB())
+	ctx := context.Background()
+
+	t.Run("EmptyList", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		orders, err := repo.List(ctx)
+
+		require.NoError(t, err)
+		assert.Empty(t, orders)
+	})
+
+	t.Run("OrderByCreatedAtDesc", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		ticketID := createTestTicket(t, 1001, "Concert A", 100)
+
+		orderID1 := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
+		orderID2 := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusConfirmed)
+		orderID3 := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusCancelled)
+
+		orders, err := repo.List(ctx)
+
+		require.NoError(t, err)
+		assert.Len(t, orders, 3)
+		assert.Equal(t, orderID3, orders[0].ID)
+		assert.Equal(t, orderID2, orders[1].ID)
+		assert.Equal(t, orderID1, orders[2].ID)
+	})
+
+	t.Run("ExcludeDeleted", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		ticketID := createTestTicket(t, 1001, "Concert", 100)
+
+		orderID1 := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
+		orderID2 := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
+
+		// 删除第二个订单
+		err := repo.Delete(ctx, orderID2)
+		require.NoError(t, err)
+
+		orders, err := repo.List(ctx)
+		require.NoError(t, err)
+		assert.Len(t, orders, 1)
+		assert.Equal(t, orderID1, orders[0].ID)
+	})
+}
+
+func TestOrderRepository_Delete(t *testing.T) {
+	repo := repository.NewOrderRepository(getTestDB())
+	ctx := context.Background()
+
+	t.Run("Success", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		ticketID := createTestTicket(t, 1001, "Concert A", 100)
+		orderID := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
+
+		err := repo.Delete(ctx, orderID)
+		require.NoError(t, err)
+
+		// 驗證軟刪除後無法查到
+		_, err = repo.FindByID(ctx, orderID)
+		require.Error(t, err)
+		assert.Equal(t, apperrors.ErrOrderNotFound, err)
+	})
+
+	t.Run("NotFound", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		err := repo.Delete(ctx, 99999)
+
+		require.Error(t, err)
+		assert.Equal(t, apperrors.ErrOrderNotFound, err)
+	})
+}
+
+func TestOrderRepository_UpdateStatusWithLock(t *testing.T) {
+	repo := repository.NewOrderRepository(getTestDB())
+	ctx := context.Background()
+
+	t.Run("Success", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		ticketID := createTestTicket(t, 1001, "Concert A", 100)
+		orderID := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
+
+		tx, txCleanup := setupTestWithTransaction(t)
+		defer txCleanup()
+
+		updated, err := repo.UpdateStatusWithLock(ctx, tx, orderID, model.OrderStatusConfirmed)
+
+		require.NoError(t, err)
+		assert.Equal(t, orderID, updated.ID)
+		assert.Equal(t, model.OrderStatusConfirmed, updated.Status)
+	})
+
+	t.Run("NotFound", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		tx, txCleanup := setupTestWithTransaction(t)
+		defer txCleanup()
+
+		_, err := repo.UpdateStatusWithLock(ctx, tx, 99999, model.OrderStatusConfirmed)
+
+		require.Error(t, err)
+	})
+}
