@@ -21,6 +21,7 @@ type OrderRepository interface {
 	// Transaction methods
 	Create(ctx context.Context, tx pgx.Tx, order *model.Order) (*model.Order, error)
 	UpdateStatusWithLock(ctx context.Context, tx pgx.Tx, id int, status model.OrderStatus) (*model.Order, error)
+	GetUserTicketOrderCount(ctx context.Context, tx pgx.Tx, userID int, ticketID int) (int, error)
 }
 
 type OrderRepositoryImpl struct {
@@ -276,4 +277,23 @@ func (r *OrderRepositoryImpl) Delete(ctx context.Context, id int) error {
 	}
 
 	return nil
+}
+
+func (r *OrderRepositoryImpl) GetUserTicketOrderCount(ctx context.Context, tx pgx.Tx, userID int, ticketID int) (int, error) {
+	query := `
+		SELECT COALESCE(SUM(quantity), 0)
+		FROM orders
+		WHERE user_id = $1 
+		  AND ticket_id = $2 
+		  AND status != $3
+		  AND deleted_at IS NULL
+	`
+
+	var totalQuantity int
+	err := tx.QueryRow(ctx, query, userID, ticketID, model.OrderStatusCancelled).Scan(&totalQuantity)
+	if err != nil {
+		return 0, err
+	}
+
+	return totalQuantity, nil
 }

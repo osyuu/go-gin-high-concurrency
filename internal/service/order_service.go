@@ -57,7 +57,18 @@ func (s *OrderServiceImpl) Create(ctx context.Context, req model.CreateOrderRequ
 		return nil, apperrors.ErrInsufficientStock
 	}
 
-	// 3. create order
+	// 4. check max_per_user limit
+	existingQuantity, err := s.repository.GetUserTicketOrderCount(ctx, tx, req.UserID, req.TicketID)
+	if err != nil {
+		return nil, err
+	}
+
+	totalQuantity := existingQuantity + req.Quantity
+	if totalQuantity > ticket.MaxPerUser {
+		return nil, apperrors.ErrExceedsMaxPerUser
+	}
+
+	// 5. create order
 	order := &model.Order{
 		UserID:     req.UserID,
 		TicketID:   req.TicketID,
@@ -71,13 +82,13 @@ func (s *OrderServiceImpl) Create(ctx context.Context, req model.CreateOrderRequ
 		return nil, err
 	}
 
-	// 4. decrement ticket remaining stock
+	// 6. decrement ticket remaining stock
 	err = s.ticketRepository.DecrementStock(ctx, tx, ticket.ID, req.Quantity)
 	if err != nil {
 		return nil, err
 	}
 
-	// 5. commit transaction
+	// 7. commit transaction
 	err = tx.Commit(ctx)
 	if err != nil {
 		return nil, err
