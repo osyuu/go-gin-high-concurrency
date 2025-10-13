@@ -25,7 +25,7 @@ func TestOrderService_Create(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1001, "Concert", 100)
+		ticketID := createTestTicket(t, 1001, "Concert", 100, 5)
 
 		req := model.CreateOrderRequest{
 			UserID:   userID,
@@ -53,12 +53,12 @@ func TestOrderService_Create(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1002, "Concert", 10)
+		ticketID := createTestTicketWithStock(t, 1002, "Concert", 100, 10, 15)
 
 		req := model.CreateOrderRequest{
 			UserID:   userID,
 			TicketID: ticketID,
-			Quantity: 20, // 超過庫存
+			Quantity: 15, // 超過庫存
 		}
 
 		_, err := orderService.Create(ctx, req)
@@ -88,6 +88,61 @@ func TestOrderService_Create(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, apperrors.ErrTicketNotFound, err)
 	})
+
+	t.Run("ExceedsMaxPerUser", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		ticketID := createTestTicket(t, 1003, "Concert", 100, 5) // max_per_user = 5
+
+		// 第一次購買 3 張
+		req1 := model.CreateOrderRequest{
+			UserID:   userID,
+			TicketID: ticketID,
+			Quantity: 3,
+		}
+		_, err := orderService.Create(ctx, req1)
+		require.NoError(t, err)
+
+		// 第二次嘗試購買 3 張（總共 6 張，超過 max_per_user=5）
+		req2 := model.CreateOrderRequest{
+			UserID:   userID,
+			TicketID: ticketID,
+			Quantity: 3,
+		}
+		_, err = orderService.Create(ctx, req2)
+
+		require.Error(t, err)
+		assert.Equal(t, apperrors.ErrExceedsMaxPerUser, err)
+
+		// 驗證庫存未變（第二次購買失敗，事務回滾）
+		ticket, _ := ticketRepo.FindByID(ctx, ticketID)
+		assert.Equal(t, 97, ticket.RemainingStock) // 100 - 3（只有第一次成功）
+	})
+
+	t.Run("MaxPerUserExact", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		ticketID := createTestTicket(t, 1004, "Concert", 100, 5) // max_per_user = 5
+
+		// 購買 5 張，剛好等於 max_per_user
+		req := model.CreateOrderRequest{
+			UserID:   userID,
+			TicketID: ticketID,
+			Quantity: 5,
+		}
+		order, err := orderService.Create(ctx, req)
+
+		require.NoError(t, err)
+		assert.Equal(t, 5, order.Quantity)
+
+		// 驗證庫存減少
+		ticket, _ := ticketRepo.FindByID(ctx, ticketID)
+		assert.Equal(t, 95, ticket.RemainingStock)
+	})
 }
 
 func TestOrderService_Cancel(t *testing.T) {
@@ -102,13 +157,13 @@ func TestOrderService_Cancel(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1001, "Concert", 100)
+		ticketID := createTestTicket(t, 1001, "Concert", 100, 5)
 
 		// 先創建訂單
 		req := model.CreateOrderRequest{
 			UserID:   userID,
 			TicketID: ticketID,
-			Quantity: 10,
+			Quantity: 5,
 		}
 		order, err := orderService.Create(ctx, req)
 		require.NoError(t, err)
@@ -125,7 +180,7 @@ func TestOrderService_Cancel(t *testing.T) {
 		// 驗證庫存已退回
 		ticket, err := ticketRepo.FindByID(ctx, ticketID)
 		require.NoError(t, err)
-		assert.Equal(t, 100, ticket.RemainingStock) // 90 + 10 = 100
+		assert.Equal(t, 100, ticket.RemainingStock) // 95 + 5 = 100
 	})
 
 	t.Run("OrderNotFound", func(t *testing.T) {
@@ -150,7 +205,7 @@ func TestOrderService_Confirm(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1001, "Concert", 100)
+		ticketID := createTestTicket(t, 1001, "Concert", 100, 5)
 
 		// 先創建訂單
 		req := model.CreateOrderRequest{

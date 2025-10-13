@@ -268,3 +268,60 @@ func TestOrderRepository_UpdateStatusWithLock(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestOrderRepository_GetUserTicketOrderCount(t *testing.T) {
+	repo := repository.NewOrderRepository(getTestDB())
+	ctx := context.Background()
+
+	t.Run("Success", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		ticketID := createTestTicket(t, 1001, "Concert", 100)
+		createTestOrder(t, userID, ticketID, 3, 3000.0, model.OrderStatusPending)
+
+		tx, txCleanup := setupTestWithTransaction(t)
+		defer txCleanup()
+
+		count, err := repo.GetUserTicketOrderCount(ctx, tx, userID, ticketID)
+
+		require.NoError(t, err)
+		assert.Equal(t, 3, count)
+	})
+
+	t.Run("NoOrders", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		ticketID := createTestTicket(t, 1002, "Concert", 100)
+
+		tx, txCleanup := setupTestWithTransaction(t)
+		defer txCleanup()
+
+		count, err := repo.GetUserTicketOrderCount(ctx, tx, userID, ticketID)
+
+		require.NoError(t, err)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("ExcludeCancelled", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		ticketID := createTestTicket(t, 1003, "Concert", 100)
+
+		createTestOrder(t, userID, ticketID, 2, 2000.0, model.OrderStatusPending)
+		createTestOrder(t, userID, ticketID, 3, 3000.0, model.OrderStatusCancelled)
+
+		tx, txCleanup := setupTestWithTransaction(t)
+		defer txCleanup()
+
+		count, err := repo.GetUserTicketOrderCount(ctx, tx, userID, ticketID)
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, count) // 不包括已取消的
+	})
+}

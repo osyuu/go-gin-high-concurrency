@@ -76,7 +76,12 @@ func createTestUser(t *testing.T, name, email string) int {
 	return id
 }
 
-func createTestTicket(t *testing.T, eventID int, eventName string, stock int) int {
+func createTestTicket(t *testing.T, eventID int, eventName string, stock int, maxPerUser int) int {
+	t.Helper()
+	return createTestTicketWithStock(t, eventID, eventName, stock, stock, maxPerUser)
+}
+
+func createTestTicketWithStock(t *testing.T, eventID int, eventName string, totalStock, remainingStock int, maxPerUser int) int {
 	t.Helper()
 	ctx := context.Background()
 
@@ -88,7 +93,7 @@ func createTestTicket(t *testing.T, eventID int, eventName string, stock int) in
 
 	var id int
 	err := testDB.QueryRow(ctx, query,
-		eventID, eventName, 1000.0, stock, stock, 5,
+		eventID, eventName, 1000.0, totalStock, remainingStock, maxPerUser,
 	).Scan(&id)
 
 	if err != nil {
