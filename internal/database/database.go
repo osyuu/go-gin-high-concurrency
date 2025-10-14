@@ -27,10 +27,10 @@ func InitDatabase(config *config.DatabaseConfig) (*pgxpool.Pool, error) {
 	}
 
 	// 設置連接池參數
-	poolConfig.MaxConns = 25        // 最大連接數
-	poolConfig.MinConns = 5         // 最小連接數
-	poolConfig.MaxConnLifetime = time.Hour  // 連接最大生命週期
-	poolConfig.MaxConnIdleTime = time.Minute * 30  // 最大閒置時間
+	poolConfig.MaxConns = 25                      // 最大連接數
+	poolConfig.MinConns = 5                       // 最小連接數
+	poolConfig.MaxConnLifetime = time.Hour        // 連接最大生命週期
+	poolConfig.MaxConnIdleTime = time.Minute * 30 // 最大閒置時間
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
 	if err != nil {

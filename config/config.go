@@ -10,11 +10,11 @@ type Config struct {
 
 type DatabaseConfig struct {
 	Host     string
-    Port     string
-    User     string
-    Password string
-    DBName   string
-    SSLMode  string
+	Port     string
+	User     string
+	Password string
+	DBName   string
+	SSLMode  string
 }
 
 var AppConfig *Config
@@ -27,6 +27,21 @@ func LoadConfig() *Config {
 	}
 
 	return AppConfig
+}
+
+func LoadTestConfig() *Config {
+	testConfig := &DatabaseConfig{
+		Host:     "localhost",
+		Port:     "5433", // 測試 DB 用 5433 port
+		User:     "postgres",
+		Password: "postgres",
+		DBName:   "test_db",
+		SSLMode:  "disable",
+	}
+
+	return &Config{
+		Database: *testConfig,
+	}
 }
 
 func GetDatabaseConfig() DatabaseConfig {
