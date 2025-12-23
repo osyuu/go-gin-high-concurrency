@@ -37,7 +37,8 @@ func InitDatabase(config *config.DatabaseConfig) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	err = pool.Ping(context.Background())
+	ctx := context.Background()
+	err = pool.Ping(ctx)
 	if err != nil {
 		return nil, err
 	}

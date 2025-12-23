@@ -19,13 +19,17 @@ func main() {
 
 	defer pool.Close()
 
-
+	rdb, err := database.InitRedis(&cfg.Redis)
+	if err != nil {
+		log.Fatalf("Failed to initialize redis: %v", err)
+	}
+	defer rdb.Close()
 
 	router := gin.Default()
 	router.GET("/ping", func(c *gin.Context) {
-	  c.JSON(200, gin.H{
-		"message": "pong",
-	  })
+		c.JSON(200, gin.H{
+			"message": "pong",
+		})
 	})
 	router.Run() // デフォルトで0.0.0.0:8080で待機します
-  }
+}

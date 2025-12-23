@@ -2,10 +2,12 @@ package config
 
 import (
 	"os"
+	"strconv"
 )
 
 type Config struct {
 	Database DatabaseConfig
+	Redis    RedisConfig
 }
 
 type DatabaseConfig struct {
@@ -17,13 +19,22 @@ type DatabaseConfig struct {
 	SSLMode  string
 }
 
+type RedisConfig struct {
+	Host     string
+	Port     string
+	Password string
+	DB       int
+}
+
 var AppConfig *Config
 
 func LoadConfig() *Config {
 	dbConfig := GetDatabaseConfig()
+	redisConfig := GetRedisConfig()
 
 	AppConfig = &Config{
 		Database: dbConfig,
+		Redis:    redisConfig,
 	}
 
 	return AppConfig
@@ -39,8 +50,16 @@ func LoadTestConfig() *Config {
 		SSLMode:  "disable",
 	}
 
+	testRedisConfig := RedisConfig{
+		Host:     "localhost",
+		Port:     "6380", // 測試 Redis 用 6380 port
+		Password: "",
+		DB:       1,
+	}
+
 	return &Config{
 		Database: *testConfig,
+		Redis:    testRedisConfig,
 	}
 }
 
@@ -52,6 +71,20 @@ func GetDatabaseConfig() DatabaseConfig {
 		Password: getEnv("DB_PASSWORD", "postgres"),
 		DBName:   getEnv("DB_NAME", "postgres"),
 		SSLMode:  getEnv("DB_SSL_MODE", "disable"),
+	}
+}
+
+func GetRedisConfig() RedisConfig {
+	db, err := strconv.Atoi(getEnv("REDIS_DB", "0"))
+	if err != nil {
+		panic(err)
+	}
+
+	return RedisConfig{
+		Host:     getEnv("REDIS_HOST", "localhost"),
+		Port:     getEnv("REDIS_PORT", "6379"),
+		Password: getEnv("REDIS_PASSWORD", ""),
+		DB:       db,
 	}
 }
 
