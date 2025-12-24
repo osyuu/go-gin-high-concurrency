@@ -4,9 +4,10 @@ import "errors"
 
 var (
 	// common errors
-	ErrNotFound      = errors.New("resource not found")
-	ErrAlreadyExists = errors.New("resource already exists")
-	ErrInvalidInput  = errors.New("invalid input")
+	ErrNotFound            = errors.New("resource not found")
+	ErrAlreadyExists       = errors.New("resource already exists")
+	ErrInvalidInput        = errors.New("invalid input")
+	ErrInternalServerError = errors.New("internal server error")
 
 	// Ticket related errors
 	ErrTicketNotFound    = errors.New("ticket not found")
