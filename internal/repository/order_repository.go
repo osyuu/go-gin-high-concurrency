@@ -37,16 +37,17 @@ func NewOrderRepository(pool *pgxpool.Pool) OrderRepository {
 func (r *OrderRepositoryImpl) Create(ctx context.Context, tx pgx.Tx, order *model.Order) (*model.Order, error) {
 	query := `
 		INSERT INTO orders (
-			user_id, ticket_id, quantity, total_price, status
+			request_id, user_id, ticket_id, quantity, total_price, status
 		)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, user_id, ticket_id, quantity, total_price, status, created_at, updated_at
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, request_id, user_id, ticket_id, quantity, total_price, status, created_at, updated_at
 	`
 
 	err := tx.QueryRow(ctx, query,
-		order.UserID, order.TicketID, order.Quantity, order.TotalPrice, order.Status,
+		order.RequestID, order.UserID, order.TicketID, order.Quantity, order.TotalPrice, order.Status,
 	).Scan(
 		&order.ID,
+		&order.RequestID,
 		&order.UserID,
 		&order.TicketID,
 		&order.Quantity,
@@ -65,7 +66,7 @@ func (r *OrderRepositoryImpl) Create(ctx context.Context, tx pgx.Tx, order *mode
 
 func (r *OrderRepositoryImpl) List(ctx context.Context) ([]*model.Order, error) {
 	query := `
-		SELECT id, user_id, ticket_id, quantity, total_price, status,
+		SELECT id, request_id, user_id, ticket_id, quantity, total_price, status,
 		       created_at, updated_at, deleted_at
 		FROM orders
 		WHERE deleted_at IS NULL
@@ -84,6 +85,7 @@ func (r *OrderRepositoryImpl) List(ctx context.Context) ([]*model.Order, error) 
 		var order model.Order
 		err := rows.Scan(
 			&order.ID,
+			&order.RequestID,
 			&order.UserID,
 			&order.TicketID,
 			&order.Quantity,
@@ -108,7 +110,7 @@ func (r *OrderRepositoryImpl) List(ctx context.Context) ([]*model.Order, error) 
 
 func (r *OrderRepositoryImpl) FindByID(ctx context.Context, id int) (*model.Order, error) {
 	query := `
-		SELECT id, user_id, ticket_id, quantity, total_price, status,
+		SELECT id, request_id, user_id, ticket_id, quantity, total_price, status,
 		       created_at, updated_at, deleted_at
 		FROM orders
 		WHERE id = $1 AND deleted_at IS NULL
@@ -117,6 +119,7 @@ func (r *OrderRepositoryImpl) FindByID(ctx context.Context, id int) (*model.Orde
 	var order model.Order
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&order.ID,
+		&order.RequestID,
 		&order.UserID,
 		&order.TicketID,
 		&order.Quantity,
@@ -139,7 +142,7 @@ func (r *OrderRepositoryImpl) FindByID(ctx context.Context, id int) (*model.Orde
 
 func (r *OrderRepositoryImpl) FindByUserID(ctx context.Context, userID int) ([]*model.Order, error) {
 	query := `
-		SELECT id, user_id, ticket_id, quantity, total_price, status,
+		SELECT id, request_id, user_id, ticket_id, quantity, total_price, status,
 		       created_at, updated_at, deleted_at
 		FROM orders
 		WHERE user_id = $1 AND deleted_at IS NULL
@@ -158,6 +161,7 @@ func (r *OrderRepositoryImpl) FindByUserID(ctx context.Context, userID int) ([]*
 		var order model.Order
 		err := rows.Scan(
 			&order.ID,
+			&order.RequestID,
 			&order.UserID,
 			&order.TicketID,
 			&order.Quantity,
@@ -182,7 +186,7 @@ func (r *OrderRepositoryImpl) FindByUserID(ctx context.Context, userID int) ([]*
 
 func (r *OrderRepositoryImpl) FindByTicketID(ctx context.Context, ticketID int) ([]*model.Order, error) {
 	query := `
-		SELECT id, user_id, ticket_id, quantity, total_price, status,
+		SELECT id, request_id, user_id, ticket_id, quantity, total_price, status,
 		       created_at, updated_at, deleted_at
 		FROM orders
 		WHERE ticket_id = $1 AND deleted_at IS NULL
@@ -201,6 +205,7 @@ func (r *OrderRepositoryImpl) FindByTicketID(ctx context.Context, ticketID int) 
 		var order model.Order
 		err := rows.Scan(
 			&order.ID,
+			&order.RequestID,
 			&order.UserID,
 			&order.TicketID,
 			&order.Quantity,
@@ -233,13 +238,14 @@ func (r *OrderRepositoryImpl) UpdateStatusWithLock(
 		UPDATE orders
 		SET status = $1, updated_at = $2
 		WHERE id = $3
-		RETURNING id, user_id, ticket_id, quantity, total_price, status, created_at, updated_at
+		RETURNING id, request_id, user_id, ticket_id, quantity, total_price, status, created_at, updated_at
 	`
 
 	var order model.Order
 
 	err := tx.QueryRow(ctx, query, status, time.Now().UTC(), id).Scan(
 		&order.ID,
+		&order.RequestID,
 		&order.UserID,
 		&order.TicketID,
 		&order.Quantity,

@@ -46,6 +46,7 @@ type Order struct {
 	ID         int         `json:"id" db:"id"`
 	UserID     int         `json:"user_id" db:"user_id"`
 	TicketID   int         `json:"ticket_id" db:"ticket_id"`
+	RequestID  string      `json:"request_id" db:"request_id"` // 訂單請求ID, 防止重複請求
 	Quantity   int         `json:"quantity" db:"quantity"`
 	TotalPrice float64     `json:"total_price" db:"total_price"`
 	Status     OrderStatus `json:"status" db:"status"`

@@ -10,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -141,13 +142,14 @@ func createTestOrder(t *testing.T, userID, ticketID int, quantity int, totalPric
 	ctx := context.Background()
 
 	query := `
-		INSERT INTO orders (user_id, ticket_id, quantity, total_price, status)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO orders (request_id, user_id, ticket_id, quantity, total_price, status)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id
 	`
 
 	var id int
-	err := testDB.QueryRow(ctx, query, userID, ticketID, quantity, totalPrice, status).Scan(&id)
+	requestID := uuid.New().String()
+	err := testDB.QueryRow(ctx, query, requestID, userID, ticketID, quantity, totalPrice, status).Scan(&id)
 	if err != nil {
 		t.Fatalf("Failed to create test order: %v", err)
 	}

@@ -325,3 +325,56 @@ func TestOrderRepository_GetUserTicketOrderCount(t *testing.T) {
 		assert.Equal(t, 2, count) // 不包括已取消的
 	})
 }
+
+func TestOrderRepository_UniqueRequestID(t *testing.T) {
+	repo := repository.NewOrderRepository(getTestDB())
+	ctx := context.Background()
+
+	t.Run("DuplicateRequestID_ShouldFail", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "User A", "a@example.com")
+		ticketID := createTestTicket(t, 101, "Event", 100)
+
+		// 共用的 request_id
+		sharedRequestID := "same-request-id-123"
+
+		// 1. 建立第一筆訂單，應該成功
+		order1 := &model.Order{
+			RequestID:  sharedRequestID,
+			UserID:     userID,
+			TicketID:   ticketID,
+			Quantity:   1,
+			TotalPrice: 100.0,
+			Status:     model.OrderStatusPending,
+		}
+
+		tx1, txCleanup1 := setupTestWithTransaction(t)
+		_, err := repo.Create(ctx, tx1, order1)
+		require.NoError(t, err)
+		tx1.Commit(ctx) // 必須 Commit 才會正式寫入索引
+		txCleanup1()
+
+		// 2. 嘗試建立第二筆「相同 RequestID」的訂單，應該失敗
+		order2 := &model.Order{
+			RequestID:  sharedRequestID, // 使用重複的 ID
+			UserID:     userID,
+			TicketID:   ticketID,
+			Quantity:   2,
+			TotalPrice: 200.0,
+			Status:     model.OrderStatusPending,
+		}
+
+		tx2, txCleanup2 := setupTestWithTransaction(t)
+		defer txCleanup2() // 這裡失敗後會自動 Rollback
+
+		_, err = repo.Create(ctx, tx2, order2)
+
+		// 斷言：這裡必須噴出 error
+		assert.Error(t, err)
+		// 甚至可以檢查錯誤訊息是否包含 unique constraint 的關鍵字
+		assert.Contains(t, err.Error(), "unique")
+		assert.Contains(t, err.Error(), "request_id")
+	})
+}
