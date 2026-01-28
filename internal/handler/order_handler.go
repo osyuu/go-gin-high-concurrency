@@ -39,7 +39,7 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	created, err := h.service.Create(c, orderReq)
+	created, err := h.service.PrepareOrder(c, orderReq)
 	if err != nil {
 		h.handleOrderError(c, err, "CreateOrder")
 		return
@@ -55,7 +55,7 @@ func (h *OrderHandler) GetOrder(c *gin.Context) {
 		h.handleOrderError(c, err, "GetOrder")
 		return
 	}
-	order, err := h.service.GetByID(c, idInt)
+	order, err := h.service.GetOrderByID(c, idInt)
 	if err != nil {
 		h.handleOrderError(c, err, "GetOrder")
 		return
@@ -65,7 +65,7 @@ func (h *OrderHandler) GetOrder(c *gin.Context) {
 }
 
 func (h *OrderHandler) GetOrders(c *gin.Context) {
-	orders, err := h.service.List(c)
+	orders, err := h.service.OrderList(c)
 	if err != nil {
 		h.handleOrderError(c, err, "GetOrders")
 		return
@@ -81,7 +81,7 @@ func (h *OrderHandler) ConfirmOrder(c *gin.Context) {
 		h.handleOrderError(c, err, "ConfirmOrder")
 		return
 	}
-	err = h.service.Confirm(c, idInt)
+	err = h.service.ConfirmOrder(c, idInt)
 	if err != nil {
 		h.handleOrderError(c, err, "ConfirmOrder")
 		return
@@ -97,7 +97,7 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 		h.handleOrderError(c, err, "CancelOrder")
 		return
 	}
-	err = h.service.Cancel(c, idInt)
+	err = h.service.CancelOrder(c, idInt)
 	if err != nil {
 		h.handleOrderError(c, err, "CancelOrder")
 		return
@@ -113,7 +113,7 @@ func (h *OrderHandler) DeleteOrder(c *gin.Context) {
 		h.handleOrderError(c, err, "DeleteOrder")
 		return
 	}
-	err = h.service.Delete(c, idInt)
+	err = h.service.DeleteOrder(c, idInt)
 	if err != nil {
 		h.handleOrderError(c, err, "DeleteOrder")
 		return
