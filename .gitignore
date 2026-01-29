@@ -66,6 +66,9 @@ logs/
 *.sqlite
 *.sqlite3
 *.sql
+*.rdb
+*.aof
+*.manifest
 
 # ignore all sql files in migrations
 !migrations/*.sql
