@@ -44,3 +44,17 @@ func Setup() (*pgxpool.Pool, *redis.Client, func(), error) {
 
 	return testDB, testRdb, cleanup, nil
 }
+
+// SetupRedisOnly 僅初始化 Redis，用於只依賴 Redis 的測試（如 queue 整合測試）
+func SetupRedisOnly() (*redis.Client, func(), error) {
+	cfg := config.LoadTestConfig()
+	rdb, err := database.InitRedis(&cfg.Redis)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to initialize redis: %v", err)
+	}
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
+		return nil, nil, fmt.Errorf("failed to ping redis: %v", err)
+	}
+	cleanup := func() { rdb.Close() }
+	return rdb, cleanup, nil
+}
