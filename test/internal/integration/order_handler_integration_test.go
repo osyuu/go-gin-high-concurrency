@@ -80,7 +80,17 @@ func setupIntegrationTest(t *testing.T, useFailingQueue bool) (*gin.Engine, func
 		orderQueue = &failingQueue{}
 		orderService = service.NewOrderService(testDB, orderRepo, ticketRepo, inventoryManager, orderQueue)
 	} else {
-		orderQueue = queue.NewOrderQueue(100)
+		// 使用 Redis Stream 版 Queue
+		cfg := &queue.RedisStreamOrderQueueConfig{
+			ClaimMinIdleTime:   1 * time.Second,
+			MaxRetryCount:      3,
+			ReadGroupBlockTime: 500 * time.Millisecond,
+		}
+		var err error
+		orderQueue, err = queue.NewRedisStreamOrderQueue(testRdb, "order-queue-test", cfg)
+		if err != nil {
+			t.Fatalf("Failed to create Redis stream order queue: %v", err)
+		}
 		orderService = service.NewOrderService(testDB, orderRepo, ticketRepo, inventoryManager, orderQueue)
 
 		// 初始化 Worker

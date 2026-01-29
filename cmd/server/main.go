@@ -44,8 +44,11 @@ func main() {
 	// 初始化 Cache
 	inventoryManager := cache.NewRedisTicketInventoryManager(rdb)
 
-	// 初始化 Queue
-	orderQueue := queue.NewOrderQueue(1000) // buffer size 1000
+	// 初始化 Redis Stream	 Queue
+	orderQueue, err := queue.NewRedisStreamOrderQueue(rdb, "order-queue", nil)
+	if err != nil {
+		log.Fatalf("Failed to create Redis stream order queue: %v", err)
+	}
 
 	// 初始化 Service
 	orderService := service.NewOrderService(pool, orderRepository, ticketRepository, inventoryManager, orderQueue)
