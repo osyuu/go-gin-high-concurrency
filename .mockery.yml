@@ -1,0 +1,30 @@
+all: false
+dir: '{{.InterfaceDir}}/mocks'
+filename: "{{.InterfaceName}}.go"
+force-file-write: true
+formatter: goimports
+generate: true
+include-auto-generated: false
+log-level: info
+structname: '{{.Mock}}{{.InterfaceName}}'
+pkgname: 'mocks'
+recursive: false
+require-template-schema-exists: true
+template: testify
+template-schema: '{{.Template}}.schema.json'
+packages:
+  go-gin-high-concurrency/internal/worker:
+    config:
+      all: true 
+  go-gin-high-concurrency/internal/queue:
+    config:
+      all: true 
+  go-gin-high-concurrency/internal/service:
+    config:
+      all: true 
+  go-gin-high-concurrency/internal/cache:
+    config:
+      all: true 
+  go-gin-high-concurrency/internal/repository:
+    config:
+      all: true 
