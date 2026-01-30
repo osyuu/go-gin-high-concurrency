@@ -16,6 +16,7 @@ import (
 type TicketRepository interface {
 	Create(ctx context.Context, ticket *model.Ticket) (*model.Ticket, error)
 	List(ctx context.Context) ([]*model.Ticket, error)
+	ListByEventID(ctx context.Context, eventID int) ([]*model.Ticket, error)
 	FindByID(ctx context.Context, id int) (*model.Ticket, error)
 	FindByTicketID(ctx context.Context, ticketID uuid.UUID) (*model.Ticket, error)
 	Update(ctx context.Context, ticketID uuid.UUID, params model.UpdateTicketParams) (*model.Ticket, error)
@@ -112,6 +113,48 @@ func (r *TicketRepositoryImpl) List(ctx context.Context) ([]*model.Ticket, error
 		return nil, err
 	}
 
+	return tickets, nil
+}
+
+func (r *TicketRepositoryImpl) ListByEventID(ctx context.Context, eventID int) ([]*model.Ticket, error) {
+	query := `
+		SELECT id, event_id, ticket_id, name, price,
+				total_stock, remaining_stock, max_per_user,
+				created_at, updated_at, deleted_at
+		FROM tickets
+		WHERE event_id = $1 AND deleted_at IS NULL
+		ORDER BY created_at ASC
+	`
+	rows, err := r.pool.Query(ctx, query, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tickets := make([]*model.Ticket, 0)
+	for rows.Next() {
+		var ticket model.Ticket
+		err := rows.Scan(
+			&ticket.ID,
+			&ticket.EventID,
+			&ticket.TicketID,
+			&ticket.Name,
+			&ticket.Price,
+			&ticket.TotalStock,
+			&ticket.RemainingStock,
+			&ticket.MaxPerUser,
+			&ticket.CreatedAt,
+			&ticket.UpdatedAt,
+			&ticket.DeletedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tickets = append(tickets, &ticket)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return tickets, nil
 }
 

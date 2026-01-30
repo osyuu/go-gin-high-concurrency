@@ -27,6 +27,7 @@ func (h *EventHandler) RegisterRoutes(r *gin.Engine) {
 		router.GET("events/:uuid", h.GetByEventID)
 		router.POST("events", h.Create)
 		router.PUT("events/:uuid", h.UpdateByEventID)
+		router.POST("events/:uuid/open-for-sale", h.OpenForSale)
 	}
 }
 
@@ -108,6 +109,21 @@ func (h *EventHandler) UpdateByEventID(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, updated)
+}
+
+// OpenForSale 活動開賣：預熱該活動底下所有票種的 Redis 庫存，使該活動可被下單
+func (h *EventHandler) OpenForSale(c *gin.Context) {
+	uuidStr := c.Param("uuid")
+	eventID, err := uuid.Parse(uuidStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid event uuid"})
+		return
+	}
+	if err := h.service.OpenForSale(c, eventID); err != nil {
+		h.handleError(c, err, "OpenForSale")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "event opened for sale"})
 }
 
 func (h *EventHandler) handleError(c *gin.Context, err error, operation string) {

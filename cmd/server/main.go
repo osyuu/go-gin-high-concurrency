@@ -54,7 +54,7 @@ func main() {
 
 	// 初始化 Service
 	orderService := service.NewOrderService(pool, orderRepository, ticketRepository, inventoryManager, orderQueue)
-	eventService := service.NewEventService(eventRepository)
+	eventService := service.NewEventService(eventRepository, ticketRepository, inventoryManager)
 	ticketService := service.NewTicketService(ticketRepository)
 
 	// Worker 使用 Background context（長期運行的後台任務，獨立於 HTTP Server）

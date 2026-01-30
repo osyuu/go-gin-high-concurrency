@@ -104,7 +104,7 @@ func setupIntegrationTest(t *testing.T, useFailingQueue bool) (*gin.Engine, func
 
 	// 初始化 Handler 和 Router（含 Event / Ticket API，供 createTestEventViaAPI / createTestTicketViaAPI 使用）
 	eventRepo := repository.NewEventRepository(testDB)
-	eventService := service.NewEventService(eventRepo)
+	eventService := service.NewEventService(eventRepo, ticketRepo, inventoryManager)
 	eventHandler := handler.NewEventHandler(eventService)
 	ticketService := service.NewTicketService(ticketRepo)
 	ticketHandler := handler.NewTicketHandler(ticketService)
