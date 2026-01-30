@@ -10,7 +10,7 @@ import (
 	"go-gin-high-concurrency/internal/repository"
 	"go-gin-high-concurrency/internal/service"
 	"go-gin-high-concurrency/internal/worker"
-	"log"
+	"go-gin-high-concurrency/pkg/logger"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -25,13 +26,13 @@ func main() {
 
 	pool, err := database.InitDatabase(&cfg.Database)
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		logger.L.Fatal("Failed to initialize database", zap.Error(err))
 	}
 	defer pool.Close()
 
 	rdb, err := database.InitRedis(&cfg.Redis)
 	if err != nil {
-		log.Fatalf("Failed to initialize redis: %v", err)
+		logger.L.Fatal("Failed to initialize redis", zap.Error(err))
 	}
 	defer rdb.Close()
 
@@ -47,7 +48,7 @@ func main() {
 	// 初始化 Redis Stream	 Queue
 	orderQueue, err := queue.NewRedisStreamOrderQueue(rdb, "order-queue", nil)
 	if err != nil {
-		log.Fatalf("Failed to create Redis stream order queue: %v", err)
+		logger.L.Fatal("Failed to create Redis stream order queue", zap.Error(err))
 	}
 
 	// 初始化 Service
@@ -59,9 +60,9 @@ func main() {
 
 	orderWorker := worker.NewOrderWorker(orderService, orderQueue)
 	if err := orderWorker.Start(workerCtx); err != nil {
-		log.Fatalf("Failed to start order worker: %v", err)
+		logger.L.Fatal("Failed to start order worker", zap.Error(err))
 	}
-	log.Println("Order worker started successfully")
+	logger.L.Info("Order worker started successfully")
 
 	// 初始化 Handler 和 Router
 	orderHandler := handler.NewOrderHandler(orderService)
@@ -85,9 +86,9 @@ func main() {
 
 	// 在 goroutine 中啟動服務器
 	go func() {
-		log.Println("Server starting on :8080")
+		logger.L.Info("Server starting on :8080")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
+			logger.L.Fatal("Failed to start server", zap.Error(err))
 		}
 	}()
 
@@ -98,7 +99,7 @@ func main() {
 	// 等待終止信號
 	<-ctx.Done()
 
-	log.Println("Shutting down server...")
+	logger.L.Info("Shutting down server...")
 
 	// 設置 shutdown timeout（給正在處理的請求時間完成）
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -107,13 +108,13 @@ func main() {
 	// 1. 先停止接收新請求（關閉 HTTP Server）
 	// 注意：Gin 會自動等待正在處理的 HTTP 請求完成
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("Server forced to shutdown: %v", err)
+		logger.L.Warn("Server forced to shutdown", zap.Error(err))
 	} else {
-		log.Println("Server gracefully stopped")
+		logger.L.Info("Server gracefully stopped")
 	}
 
 	// 2. 停止 Worker（讓它完成正在處理的訂單）
-	log.Println("Stopping worker...")
+	logger.L.Info("Stopping worker...")
 	workerCancel()
 
 	// 等待 Worker 完成（給一點時間讓正在處理的訂單完成）
@@ -125,23 +126,24 @@ func main() {
 	select {
 	case <-workerShutdownCtx.Done():
 		if workerShutdownCtx.Err() == context.DeadlineExceeded {
-			log.Println("Worker shutdown timeout exceeded")
+			logger.L.Warn("Worker shutdown timeout exceeded")
 		} else {
-			log.Println("Worker stopped successfully")
+			logger.L.Info("Worker stopped successfully")
 		}
 	case <-time.After(2 * time.Second):
-		log.Println("Waiting for worker to finish processing...")
+		logger.L.Info("Waiting for worker to finish processing...")
 	}
 
 	// 檢查 HTTP Server shutdown 是否超時
 	select {
 	case <-shutdownCtx.Done():
 		if shutdownCtx.Err() == context.DeadlineExceeded {
-			log.Println("Shutdown timeout exceeded, forcing shutdown")
+			logger.L.Warn("Shutdown timeout exceeded, forcing shutdown")
 		}
 	default:
 	}
 
 	// 關閉資料庫和 Redis 連接（defer 會自動執行）
-	log.Println("Server shutdown complete")
+	logger.L.Info("Server shutdown complete")
+	_ = logger.L.Sync()
 }

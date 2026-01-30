@@ -5,11 +5,12 @@ import (
 	"go-gin-high-concurrency/internal/model"
 	"go-gin-high-concurrency/internal/service"
 	apperrors "go-gin-high-concurrency/pkg/app_errors"
-	"log"
+	"go-gin-high-concurrency/pkg/logger"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type OrderHandler struct {
@@ -125,29 +126,30 @@ func (h *OrderHandler) DeleteOrder(c *gin.Context) {
 // Helper functions
 
 func (h *OrderHandler) handleOrderError(c *gin.Context, err error, operation string) {
+	log := logger.WithComponent("handler").With(zap.String("operation", operation), zap.Error(err))
 	switch {
 	case errors.Is(err, apperrors.ErrInsufficientStock):
-		log.Printf("Insufficient stock, %s, %v", operation, err)
+		log.Warn("Insufficient stock")
 		c.JSON(http.StatusConflict, gin.H{
 			"error": "Insufficient stock",
 		})
 	case errors.Is(err, apperrors.ErrExceedsMaxPerUser):
-		log.Printf("Exceeds max per user, %s, %v", operation, err)
+		log.Warn("Exceeds max per user")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Exceeds max per user",
 		})
 	case errors.Is(err, apperrors.ErrTicketNotFound):
-		log.Printf("Ticket not found, %s, %v", operation, err)
+		log.Warn("Ticket not found")
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "Ticket not found",
 		})
 	case errors.Is(err, apperrors.ErrOrderNotFound):
-		log.Printf("Order not found, %s, %v", operation, err)
+		log.Warn("Order not found")
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "Order not found",
 		})
 	default:
-		log.Printf("Unexpected error, %s, %v", operation, err)
+		log.Error("Unexpected error")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Internal server error",
 		})

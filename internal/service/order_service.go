@@ -7,11 +7,12 @@ import (
 	"go-gin-high-concurrency/internal/queue"
 	"go-gin-high-concurrency/internal/repository"
 	apperrors "go-gin-high-concurrency/pkg/app_errors"
-	"log"
+	"go-gin-high-concurrency/pkg/logger"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 )
 
 type OrderService interface {
@@ -75,7 +76,7 @@ func (s *OrderServiceImpl) PrepareOrder(ctx context.Context, req model.CreateOrd
 	// 1. 嘗試發送 MQ：ctx跟隨請求的生命週期，用戶不等了就取消
 	err = s.orderQueue.PublishOrder(ctx, order)
 	if err != nil {
-		log.Printf("failed to publish order: %v", err)
+		logger.WithComponent("service").Error("failed to publish order", zap.Error(err))
 		// MQ紀錄失敗，回滾庫存(絕對不能讓使用者搶到票, 所以不使用go routine)
 		// 2. 回滾庫存：RollbackStock使用context.Background()傳遞, 確保RollbackStock一定會執行
 		s.inventoryManager.RollbackStock(context.Background(), req.TicketID, req.Quantity, req.UserID)
