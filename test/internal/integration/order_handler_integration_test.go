@@ -227,6 +227,15 @@ func createHTTPRequest(method, url string, body interface{}) *http.Request {
 	return req
 }
 
+// postCreateOrder 發送 POST /api/v1/orders 請求，回傳 ResponseRecorder 供斷言
+func postCreateOrder(t *testing.T, router *gin.Engine, req model.CreateOrderRequest) *httptest.ResponseRecorder {
+	t.Helper()
+	httpReq := createHTTPRequest("POST", "/api/v1/orders", req)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httpReq)
+	return w
+}
+
 // TestOrderHandler_Integration_EndToEnd 測試完整流程：HTTP → Handler → Service → Queue → Worker → Database
 func TestOrderHandler_Integration_EndToEnd(t *testing.T) {
 	router, cleanup := setupIntegrationTest(t, false)
@@ -246,15 +255,11 @@ func TestOrderHandler_Integration_EndToEnd(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// 4. 發送 HTTP 請求創建訂單
-	createOrderRequest := model.CreateOrderRequest{
+	w := postCreateOrder(t, router, model.CreateOrderRequest{
 		UserID:   userID,
 		TicketID: ticketID,
 		Quantity: 2,
-	}
-
-	req := createHTTPRequest("POST", "/api/v1/orders", createOrderRequest)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	})
 
 	// 5. 驗證 HTTP 回應
 	assert.Equal(t, http.StatusCreated, w.Code)
@@ -333,15 +338,11 @@ func TestOrderHandler_Integration_RollbackOnPublishFailure(t *testing.T) {
 	assert.Equal(t, 100, initialStock)
 
 	// 5. 發送 HTTP 請求（正常情況下應該成功）
-	createOrderRequest := model.CreateOrderRequest{
+	w := postCreateOrder(t, router, model.CreateOrderRequest{
 		UserID:   userID,
 		TicketID: ticketID,
 		Quantity: 1,
-	}
-
-	req := createHTTPRequest("POST", "/api/v1/orders", createOrderRequest)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	})
 
 	// 5. 驗證 HTTP 回應是 500（因為 PublishOrder 失敗）
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
@@ -374,15 +375,11 @@ func TestOrderHandler_Integration_InsufficientStock(t *testing.T) {
 	warmUpInventory(t, inventoryManager, ticketID, 1, 100.0, 2)
 
 	// 3. 發送 HTTP 請求（嘗試購買 2 張）
-	createOrderRequest := model.CreateOrderRequest{
+	w := postCreateOrder(t, router, model.CreateOrderRequest{
 		UserID:   userID,
 		TicketID: ticketID,
 		Quantity: 2,
-	}
-
-	req := createHTTPRequest("POST", "/api/v1/orders", createOrderRequest)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	})
 
 	// 4. 驗證 HTTP 回應是 409 Conflict
 	assert.Equal(t, http.StatusConflict, w.Code)
@@ -407,30 +404,22 @@ func TestOrderHandler_Integration_ExceedsMaxPerUser(t *testing.T) {
 	warmUpInventory(t, inventoryManager, ticketID, 100, 100.0, 2)
 
 	// 3. 第一次購買 2 張（應該成功）
-	createOrderRequest1 := model.CreateOrderRequest{
+	w1 := postCreateOrder(t, router, model.CreateOrderRequest{
 		UserID:   userID,
 		TicketID: ticketID,
 		Quantity: 2,
-	}
-
-	req1 := createHTTPRequest("POST", "/api/v1/orders", createOrderRequest1)
-	w1 := httptest.NewRecorder()
-	router.ServeHTTP(w1, req1)
+	})
 	assert.Equal(t, http.StatusCreated, w1.Code)
 
 	// 4. 等待 Worker 處理
 	time.Sleep(500 * time.Millisecond)
 
 	// 5. 第二次嘗試購買 1 張（應該失敗，因為已經買了 2 張）
-	createOrderRequest2 := model.CreateOrderRequest{
+	w2 := postCreateOrder(t, router, model.CreateOrderRequest{
 		UserID:   userID,
 		TicketID: ticketID,
 		Quantity: 1,
-	}
-
-	req2 := createHTTPRequest("POST", "/api/v1/orders", createOrderRequest2)
-	w2 := httptest.NewRecorder()
-	router.ServeHTTP(w2, req2)
+	})
 
 	// 6. 驗證 HTTP 回應是 400 Bad Request
 	assert.Equal(t, http.StatusBadRequest, w2.Code)
@@ -465,15 +454,11 @@ func TestOrderHandler_Integration_ConcurrentOrders(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			createOrderRequest := model.CreateOrderRequest{
+			w := postCreateOrder(t, router, model.CreateOrderRequest{
 				UserID:   userID,
 				TicketID: ticketID,
 				Quantity: 1,
-			}
-
-			req := createHTTPRequest("POST", "/api/v1/orders", createOrderRequest)
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
+			})
 
 			mu.Lock()
 			if w.Code == http.StatusCreated {

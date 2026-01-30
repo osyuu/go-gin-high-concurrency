@@ -8,6 +8,7 @@ import (
 	"context"
 	"go-gin-high-concurrency/internal/model"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -238,55 +239,55 @@ func (_c *MockOrderRepository_FindByID_Call) RunAndReturn(run func(ctx context.C
 	return _c
 }
 
-// FindByTicketID provides a mock function for the type MockOrderRepository
-func (_mock *MockOrderRepository) FindByTicketID(ctx context.Context, ticketID int) ([]*model.Order, error) {
-	ret := _mock.Called(ctx, ticketID)
+// FindByOrderID provides a mock function for the type MockOrderRepository
+func (_mock *MockOrderRepository) FindByOrderID(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
+	ret := _mock.Called(ctx, orderID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for FindByTicketID")
+		panic("no return value specified for FindByOrderID")
 	}
 
-	var r0 []*model.Order
+	var r0 *model.Order
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int) ([]*model.Order, error)); ok {
-		return returnFunc(ctx, ticketID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*model.Order, error)); ok {
+		return returnFunc(ctx, orderID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int) []*model.Order); ok {
-		r0 = returnFunc(ctx, ticketID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) *model.Order); ok {
+		r0 = returnFunc(ctx, orderID)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*model.Order)
+			r0 = ret.Get(0).(*model.Order)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, int) error); ok {
-		r1 = returnFunc(ctx, ticketID)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, orderID)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockOrderRepository_FindByTicketID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByTicketID'
-type MockOrderRepository_FindByTicketID_Call struct {
+// MockOrderRepository_FindByOrderID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByOrderID'
+type MockOrderRepository_FindByOrderID_Call struct {
 	*mock.Call
 }
 
-// FindByTicketID is a helper method to define mock.On call
+// FindByOrderID is a helper method to define mock.On call
 //   - ctx context.Context
-//   - ticketID int
-func (_e *MockOrderRepository_Expecter) FindByTicketID(ctx interface{}, ticketID interface{}) *MockOrderRepository_FindByTicketID_Call {
-	return &MockOrderRepository_FindByTicketID_Call{Call: _e.mock.On("FindByTicketID", ctx, ticketID)}
+//   - orderID uuid.UUID
+func (_e *MockOrderRepository_Expecter) FindByOrderID(ctx interface{}, orderID interface{}) *MockOrderRepository_FindByOrderID_Call {
+	return &MockOrderRepository_FindByOrderID_Call{Call: _e.mock.On("FindByOrderID", ctx, orderID)}
 }
 
-func (_c *MockOrderRepository_FindByTicketID_Call) Run(run func(ctx context.Context, ticketID int)) *MockOrderRepository_FindByTicketID_Call {
+func (_c *MockOrderRepository_FindByOrderID_Call) Run(run func(ctx context.Context, orderID uuid.UUID)) *MockOrderRepository_FindByOrderID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 uuid.UUID
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].(uuid.UUID)
 		}
 		run(
 			arg0,
@@ -296,12 +297,12 @@ func (_c *MockOrderRepository_FindByTicketID_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockOrderRepository_FindByTicketID_Call) Return(orders []*model.Order, err error) *MockOrderRepository_FindByTicketID_Call {
-	_c.Call.Return(orders, err)
+func (_c *MockOrderRepository_FindByOrderID_Call) Return(order *model.Order, err error) *MockOrderRepository_FindByOrderID_Call {
+	_c.Call.Return(order, err)
 	return _c
 }
 
-func (_c *MockOrderRepository_FindByTicketID_Call) RunAndReturn(run func(ctx context.Context, ticketID int) ([]*model.Order, error)) *MockOrderRepository_FindByTicketID_Call {
+func (_c *MockOrderRepository_FindByOrderID_Call) RunAndReturn(run func(ctx context.Context, orderID uuid.UUID) (*model.Order, error)) *MockOrderRepository_FindByOrderID_Call {
 	_c.Call.Return(run)
 	return _c
 }

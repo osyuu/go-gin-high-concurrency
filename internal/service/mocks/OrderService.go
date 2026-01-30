@@ -8,6 +8,7 @@ import (
 	"context"
 	"go-gin-high-concurrency/internal/model"
 
+	"github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -38,44 +39,44 @@ func (_m *MockOrderService) EXPECT() *MockOrderService_Expecter {
 	return &MockOrderService_Expecter{mock: &_m.Mock}
 }
 
-// CancelOrder provides a mock function for the type MockOrderService
-func (_mock *MockOrderService) CancelOrder(ctx context.Context, id int) error {
-	ret := _mock.Called(ctx, id)
+// CancelOrderByOrderID provides a mock function for the type MockOrderService
+func (_mock *MockOrderService) CancelOrderByOrderID(ctx context.Context, orderID uuid.UUID) error {
+	ret := _mock.Called(ctx, orderID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for CancelOrder")
+		panic("no return value specified for CancelOrderByOrderID")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int) error); ok {
-		r0 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, orderID)
 	} else {
 		r0 = ret.Error(0)
 	}
 	return r0
 }
 
-// MockOrderService_CancelOrder_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CancelOrder'
-type MockOrderService_CancelOrder_Call struct {
+// MockOrderService_CancelOrderByOrderID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CancelOrderByOrderID'
+type MockOrderService_CancelOrderByOrderID_Call struct {
 	*mock.Call
 }
 
-// CancelOrder is a helper method to define mock.On call
+// CancelOrderByOrderID is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int
-func (_e *MockOrderService_Expecter) CancelOrder(ctx interface{}, id interface{}) *MockOrderService_CancelOrder_Call {
-	return &MockOrderService_CancelOrder_Call{Call: _e.mock.On("CancelOrder", ctx, id)}
+//   - orderID uuid.UUID
+func (_e *MockOrderService_Expecter) CancelOrderByOrderID(ctx interface{}, orderID interface{}) *MockOrderService_CancelOrderByOrderID_Call {
+	return &MockOrderService_CancelOrderByOrderID_Call{Call: _e.mock.On("CancelOrderByOrderID", ctx, orderID)}
 }
 
-func (_c *MockOrderService_CancelOrder_Call) Run(run func(ctx context.Context, id int)) *MockOrderService_CancelOrder_Call {
+func (_c *MockOrderService_CancelOrderByOrderID_Call) Run(run func(ctx context.Context, orderID uuid.UUID)) *MockOrderService_CancelOrderByOrderID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 uuid.UUID
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].(uuid.UUID)
 		}
 		run(
 			arg0,
@@ -85,54 +86,54 @@ func (_c *MockOrderService_CancelOrder_Call) Run(run func(ctx context.Context, i
 	return _c
 }
 
-func (_c *MockOrderService_CancelOrder_Call) Return(err error) *MockOrderService_CancelOrder_Call {
+func (_c *MockOrderService_CancelOrderByOrderID_Call) Return(err error) *MockOrderService_CancelOrderByOrderID_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockOrderService_CancelOrder_Call) RunAndReturn(run func(ctx context.Context, id int) error) *MockOrderService_CancelOrder_Call {
+func (_c *MockOrderService_CancelOrderByOrderID_Call) RunAndReturn(run func(ctx context.Context, orderID uuid.UUID) error) *MockOrderService_CancelOrderByOrderID_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ConfirmOrder provides a mock function for the type MockOrderService
-func (_mock *MockOrderService) ConfirmOrder(ctx context.Context, id int) error {
-	ret := _mock.Called(ctx, id)
+// ConfirmOrderByOrderID provides a mock function for the type MockOrderService
+func (_mock *MockOrderService) ConfirmOrderByOrderID(ctx context.Context, orderID uuid.UUID) error {
+	ret := _mock.Called(ctx, orderID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ConfirmOrder")
+		panic("no return value specified for ConfirmOrderByOrderID")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int) error); ok {
-		r0 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, orderID)
 	} else {
 		r0 = ret.Error(0)
 	}
 	return r0
 }
 
-// MockOrderService_ConfirmOrder_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConfirmOrder'
-type MockOrderService_ConfirmOrder_Call struct {
+// MockOrderService_ConfirmOrderByOrderID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConfirmOrderByOrderID'
+type MockOrderService_ConfirmOrderByOrderID_Call struct {
 	*mock.Call
 }
 
-// ConfirmOrder is a helper method to define mock.On call
+// ConfirmOrderByOrderID is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int
-func (_e *MockOrderService_Expecter) ConfirmOrder(ctx interface{}, id interface{}) *MockOrderService_ConfirmOrder_Call {
-	return &MockOrderService_ConfirmOrder_Call{Call: _e.mock.On("ConfirmOrder", ctx, id)}
+//   - orderID uuid.UUID
+func (_e *MockOrderService_Expecter) ConfirmOrderByOrderID(ctx interface{}, orderID interface{}) *MockOrderService_ConfirmOrderByOrderID_Call {
+	return &MockOrderService_ConfirmOrderByOrderID_Call{Call: _e.mock.On("ConfirmOrderByOrderID", ctx, orderID)}
 }
 
-func (_c *MockOrderService_ConfirmOrder_Call) Run(run func(ctx context.Context, id int)) *MockOrderService_ConfirmOrder_Call {
+func (_c *MockOrderService_ConfirmOrderByOrderID_Call) Run(run func(ctx context.Context, orderID uuid.UUID)) *MockOrderService_ConfirmOrderByOrderID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 uuid.UUID
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].(uuid.UUID)
 		}
 		run(
 			arg0,
@@ -142,54 +143,54 @@ func (_c *MockOrderService_ConfirmOrder_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockOrderService_ConfirmOrder_Call) Return(err error) *MockOrderService_ConfirmOrder_Call {
+func (_c *MockOrderService_ConfirmOrderByOrderID_Call) Return(err error) *MockOrderService_ConfirmOrderByOrderID_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockOrderService_ConfirmOrder_Call) RunAndReturn(run func(ctx context.Context, id int) error) *MockOrderService_ConfirmOrder_Call {
+func (_c *MockOrderService_ConfirmOrderByOrderID_Call) RunAndReturn(run func(ctx context.Context, orderID uuid.UUID) error) *MockOrderService_ConfirmOrderByOrderID_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// DeleteOrder provides a mock function for the type MockOrderService
-func (_mock *MockOrderService) DeleteOrder(ctx context.Context, id int) error {
-	ret := _mock.Called(ctx, id)
+// DeleteOrderByOrderID provides a mock function for the type MockOrderService
+func (_mock *MockOrderService) DeleteOrderByOrderID(ctx context.Context, orderID uuid.UUID) error {
+	ret := _mock.Called(ctx, orderID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for DeleteOrder")
+		panic("no return value specified for DeleteOrderByOrderID")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int) error); ok {
-		r0 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, orderID)
 	} else {
 		r0 = ret.Error(0)
 	}
 	return r0
 }
 
-// MockOrderService_DeleteOrder_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteOrder'
-type MockOrderService_DeleteOrder_Call struct {
+// MockOrderService_DeleteOrderByOrderID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteOrderByOrderID'
+type MockOrderService_DeleteOrderByOrderID_Call struct {
 	*mock.Call
 }
 
-// DeleteOrder is a helper method to define mock.On call
+// DeleteOrderByOrderID is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int
-func (_e *MockOrderService_Expecter) DeleteOrder(ctx interface{}, id interface{}) *MockOrderService_DeleteOrder_Call {
-	return &MockOrderService_DeleteOrder_Call{Call: _e.mock.On("DeleteOrder", ctx, id)}
+//   - orderID uuid.UUID
+func (_e *MockOrderService_Expecter) DeleteOrderByOrderID(ctx interface{}, orderID interface{}) *MockOrderService_DeleteOrderByOrderID_Call {
+	return &MockOrderService_DeleteOrderByOrderID_Call{Call: _e.mock.On("DeleteOrderByOrderID", ctx, orderID)}
 }
 
-func (_c *MockOrderService_DeleteOrder_Call) Run(run func(ctx context.Context, id int)) *MockOrderService_DeleteOrder_Call {
+func (_c *MockOrderService_DeleteOrderByOrderID_Call) Run(run func(ctx context.Context, orderID uuid.UUID)) *MockOrderService_DeleteOrderByOrderID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 uuid.UUID
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].(uuid.UUID)
 		}
 		run(
 			arg0,
@@ -199,12 +200,12 @@ func (_c *MockOrderService_DeleteOrder_Call) Run(run func(ctx context.Context, i
 	return _c
 }
 
-func (_c *MockOrderService_DeleteOrder_Call) Return(err error) *MockOrderService_DeleteOrder_Call {
+func (_c *MockOrderService_DeleteOrderByOrderID_Call) Return(err error) *MockOrderService_DeleteOrderByOrderID_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockOrderService_DeleteOrder_Call) RunAndReturn(run func(ctx context.Context, id int) error) *MockOrderService_DeleteOrder_Call {
+func (_c *MockOrderService_DeleteOrderByOrderID_Call) RunAndReturn(run func(ctx context.Context, orderID uuid.UUID) error) *MockOrderService_DeleteOrderByOrderID_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -266,55 +267,55 @@ func (_c *MockOrderService_DispatchOrder_Call) RunAndReturn(run func(ctx context
 	return _c
 }
 
-// GetOrderByID provides a mock function for the type MockOrderService
-func (_mock *MockOrderService) GetOrderByID(ctx context.Context, id int) (*model.Order, error) {
-	ret := _mock.Called(ctx, id)
+// GetOrderByOrderID provides a mock function for the type MockOrderService
+func (_mock *MockOrderService) GetOrderByOrderID(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
+	ret := _mock.Called(ctx, orderID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetOrderByID")
+		panic("no return value specified for GetOrderByOrderID")
 	}
 
 	var r0 *model.Order
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int) (*model.Order, error)); ok {
-		return returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*model.Order, error)); ok {
+		return returnFunc(ctx, orderID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int) *model.Order); ok {
-		r0 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) *model.Order); ok {
+		r0 = returnFunc(ctx, orderID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.Order)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, int) error); ok {
-		r1 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, orderID)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockOrderService_GetOrderByID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetOrderByID'
-type MockOrderService_GetOrderByID_Call struct {
+// MockOrderService_GetOrderByOrderID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetOrderByOrderID'
+type MockOrderService_GetOrderByOrderID_Call struct {
 	*mock.Call
 }
 
-// GetOrderByID is a helper method to define mock.On call
+// GetOrderByOrderID is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int
-func (_e *MockOrderService_Expecter) GetOrderByID(ctx interface{}, id interface{}) *MockOrderService_GetOrderByID_Call {
-	return &MockOrderService_GetOrderByID_Call{Call: _e.mock.On("GetOrderByID", ctx, id)}
+//   - orderID uuid.UUID
+func (_e *MockOrderService_Expecter) GetOrderByOrderID(ctx interface{}, orderID interface{}) *MockOrderService_GetOrderByOrderID_Call {
+	return &MockOrderService_GetOrderByOrderID_Call{Call: _e.mock.On("GetOrderByOrderID", ctx, orderID)}
 }
 
-func (_c *MockOrderService_GetOrderByID_Call) Run(run func(ctx context.Context, id int)) *MockOrderService_GetOrderByID_Call {
+func (_c *MockOrderService_GetOrderByOrderID_Call) Run(run func(ctx context.Context, orderID uuid.UUID)) *MockOrderService_GetOrderByOrderID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 uuid.UUID
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].(uuid.UUID)
 		}
 		run(
 			arg0,
@@ -324,12 +325,12 @@ func (_c *MockOrderService_GetOrderByID_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockOrderService_GetOrderByID_Call) Return(order *model.Order, err error) *MockOrderService_GetOrderByID_Call {
+func (_c *MockOrderService_GetOrderByOrderID_Call) Return(order *model.Order, err error) *MockOrderService_GetOrderByOrderID_Call {
 	_c.Call.Return(order, err)
 	return _c
 }
 
-func (_c *MockOrderService_GetOrderByID_Call) RunAndReturn(run func(ctx context.Context, id int) (*model.Order, error)) *MockOrderService_GetOrderByID_Call {
+func (_c *MockOrderService_GetOrderByOrderID_Call) RunAndReturn(run func(ctx context.Context, orderID uuid.UUID) (*model.Order, error)) *MockOrderService_GetOrderByOrderID_Call {
 	_c.Call.Return(run)
 	return _c
 }

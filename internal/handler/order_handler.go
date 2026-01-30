@@ -7,9 +7,9 @@ import (
 	apperrors "go-gin-high-concurrency/pkg/app_errors"
 	"go-gin-high-concurrency/pkg/logger"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -25,11 +25,11 @@ func (h *OrderHandler) RegisterRoutes(r *gin.Engine) {
 	router := r.Group("/api/v1")
 	{
 		router.GET("orders", h.GetOrders)
-		router.GET("orders/:id", h.GetOrder)
+		router.GET("orders/:uuid", h.GetOrder)
 		router.POST("orders", h.CreateOrder)
-		router.PUT("orders/:id/confirm", h.ConfirmOrder)
-		router.PUT("orders/:id/cancel", h.CancelOrder)
-		router.DELETE("orders/:id", h.DeleteOrder)
+		router.PUT("orders/:uuid/confirm", h.ConfirmOrder)
+		router.PUT("orders/:uuid/cancel", h.CancelOrder)
+		router.DELETE("orders/:uuid", h.DeleteOrder)
 	}
 }
 
@@ -50,13 +50,13 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 }
 
 func (h *OrderHandler) GetOrder(c *gin.Context) {
-	id := c.Param("id")
-	idInt, err := strconv.Atoi(id)
+	uuidStr := c.Param("uuid")
+	orderID, err := uuid.Parse(uuidStr)
 	if err != nil {
-		h.handleOrderError(c, err, "GetOrder")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order uuid"})
 		return
 	}
-	order, err := h.service.GetOrderByID(c, idInt)
+	order, err := h.service.GetOrderByOrderID(c, orderID)
 	if err != nil {
 		h.handleOrderError(c, err, "GetOrder")
 		return
@@ -76,13 +76,13 @@ func (h *OrderHandler) GetOrders(c *gin.Context) {
 }
 
 func (h *OrderHandler) ConfirmOrder(c *gin.Context) {
-	id := c.Param("id")
-	idInt, err := strconv.Atoi(id)
+	uuidStr := c.Param("uuid")
+	orderID, err := uuid.Parse(uuidStr)
 	if err != nil {
-		h.handleOrderError(c, err, "ConfirmOrder")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order uuid"})
 		return
 	}
-	err = h.service.ConfirmOrder(c, idInt)
+	err = h.service.ConfirmOrderByOrderID(c, orderID)
 	if err != nil {
 		h.handleOrderError(c, err, "ConfirmOrder")
 		return
@@ -92,13 +92,13 @@ func (h *OrderHandler) ConfirmOrder(c *gin.Context) {
 }
 
 func (h *OrderHandler) CancelOrder(c *gin.Context) {
-	id := c.Param("id")
-	idInt, err := strconv.Atoi(id)
+	uuidStr := c.Param("uuid")
+	orderID, err := uuid.Parse(uuidStr)
 	if err != nil {
-		h.handleOrderError(c, err, "CancelOrder")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order uuid"})
 		return
 	}
-	err = h.service.CancelOrder(c, idInt)
+	err = h.service.CancelOrderByOrderID(c, orderID)
 	if err != nil {
 		h.handleOrderError(c, err, "CancelOrder")
 		return
@@ -108,13 +108,13 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 }
 
 func (h *OrderHandler) DeleteOrder(c *gin.Context) {
-	id := c.Param("id")
-	idInt, err := strconv.Atoi(id)
+	uuidStr := c.Param("uuid")
+	orderID, err := uuid.Parse(uuidStr)
 	if err != nil {
-		h.handleOrderError(c, err, "DeleteOrder")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order uuid"})
 		return
 	}
-	err = h.service.DeleteOrder(c, idInt)
+	err = h.service.DeleteOrderByOrderID(c, orderID)
 	if err != nil {
 		h.handleOrderError(c, err, "DeleteOrder")
 		return

@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // OrderStatus 訂單狀態類型
 type OrderStatus string
@@ -43,7 +47,8 @@ func (s OrderStatus) CanTransitionTo(target OrderStatus) bool {
 
 // Order 訂單模型
 type Order struct {
-	ID         int         `json:"id" db:"id"`
+	ID         int         `json:"-" db:"id"` // 內部主鍵，不對外暴露
+	OrderID    uuid.UUID   `json:"order_id" db:"order_id"`
 	UserID     int         `json:"user_id" db:"user_id"`
 	TicketID   int         `json:"ticket_id" db:"ticket_id"`
 	RequestID  string      `json:"request_id" db:"request_id"` // 訂單請求ID, 防止重複請求
@@ -65,15 +70,4 @@ type CreateOrderRequest struct {
 	UserID   int `json:"user_id" binding:"required"`
 	TicketID int `json:"ticket_id" binding:"required"`
 	Quantity int `json:"quantity" binding:"required,min=1"`
-}
-
-// OrderResponse 訂單響應
-type OrderResponse struct {
-	ID         int     `json:"id"`
-	UserID     int     `json:"user_id"`
-	TicketID   int     `json:"ticket_id"`
-	Quantity   int     `json:"quantity"`
-	TotalPrice float64 `json:"total_price"`
-	Status     string  `json:"status"`
-	CreatedAt  string  `json:"created_at"`
 }

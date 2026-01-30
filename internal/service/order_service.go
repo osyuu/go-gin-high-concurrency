@@ -21,10 +21,10 @@ type OrderService interface {
 	// 創建訂單(Queue持久化)
 	DispatchOrder(ctx context.Context, order *model.Order) error
 	OrderList(ctx context.Context) ([]*model.Order, error)
-	GetOrderByID(ctx context.Context, id int) (*model.Order, error)
-	ConfirmOrder(ctx context.Context, id int) error
-	CancelOrder(ctx context.Context, id int) error
-	DeleteOrder(ctx context.Context, id int) error
+	GetOrderByOrderID(ctx context.Context, orderID uuid.UUID) (*model.Order, error)
+	ConfirmOrderByOrderID(ctx context.Context, orderID uuid.UUID) error
+	CancelOrderByOrderID(ctx context.Context, orderID uuid.UUID) error
+	DeleteOrderByOrderID(ctx context.Context, orderID uuid.UUID) error
 }
 
 type OrderServiceImpl struct {
@@ -117,11 +117,35 @@ func (s *OrderServiceImpl) OrderList(ctx context.Context) ([]*model.Order, error
 	return s.repository.List(ctx)
 }
 
-func (s *OrderServiceImpl) GetOrderByID(ctx context.Context, id int) (*model.Order, error) {
-	return s.repository.FindByID(ctx, id)
+func (s *OrderServiceImpl) GetOrderByOrderID(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
+	return s.repository.FindByOrderID(ctx, orderID)
 }
 
-func (s *OrderServiceImpl) ConfirmOrder(ctx context.Context, id int) error {
+func (s *OrderServiceImpl) ConfirmOrderByOrderID(ctx context.Context, orderID uuid.UUID) error {
+	order, err := s.repository.FindByOrderID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	return s.confirmOrderByID(ctx, order.ID)
+}
+
+func (s *OrderServiceImpl) CancelOrderByOrderID(ctx context.Context, orderID uuid.UUID) error {
+	order, err := s.repository.FindByOrderID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	return s.cancelOrderByID(ctx, order.ID)
+}
+
+func (s *OrderServiceImpl) DeleteOrderByOrderID(ctx context.Context, orderID uuid.UUID) error {
+	order, err := s.repository.FindByOrderID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	return s.repository.Delete(ctx, order.ID)
+}
+
+func (s *OrderServiceImpl) confirmOrderByID(ctx context.Context, id int) error {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
@@ -132,43 +156,23 @@ func (s *OrderServiceImpl) ConfirmOrder(ctx context.Context, id int) error {
 	if err != nil {
 		return err
 	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit(ctx)
 }
 
-func (s *OrderServiceImpl) CancelOrder(ctx context.Context, id int) error {
+func (s *OrderServiceImpl) cancelOrderByID(ctx context.Context, id int) error {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	// 2. update order status
 	order, err := s.repository.UpdateStatusWithLock(ctx, tx, id, model.OrderStatusCancelled)
 	if err != nil {
 		return err
 	}
-
-	// 3. increment ticket remaining stock
 	err = s.ticketRepository.IncrementStock(ctx, tx, order.TicketID, order.Quantity)
 	if err != nil {
 		return err
 	}
-
-	// 4. commit transaction
-	err = tx.Commit(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *OrderServiceImpl) DeleteOrder(ctx context.Context, id int) error {
-	return s.repository.Delete(ctx, id)
+	return tx.Commit(ctx)
 }

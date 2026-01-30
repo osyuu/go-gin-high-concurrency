@@ -12,6 +12,7 @@ import (
 	"go-gin-high-concurrency/internal/service"
 	"go-gin-high-concurrency/pkg/app_errors"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -179,82 +180,90 @@ func TestOrderService_RemainingMethods(t *testing.T) {
 		assert.Len(t, orders, 2)
 	})
 
-	// --- 2. GetOrderByID ---
-	t.Run("GetOrderByID - Success", func(t *testing.T) {
+	// --- 2. GetOrderByOrderID ---
+	t.Run("GetOrderByOrderID - Success", func(t *testing.T) {
 		mockInventory, mockQueue, orderRepo, ticketRepo := setupMock(t)
 		orderService := service.NewOrderService(db, orderRepo, ticketRepo, mockInventory, mockQueue)
 
-		orderRepo.EXPECT().FindByID(ctx, 1).Return(&model.Order{ID: 1}, nil).Once()
+		orderID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
+		expectedOrder := &model.Order{ID: 1, OrderID: orderID}
+		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(expectedOrder, nil).Once()
 
-		order, err := orderService.GetOrderByID(ctx, 1)
+		order, err := orderService.GetOrderByOrderID(ctx, orderID)
 		assert.NoError(t, err)
-		assert.Equal(t, 1, order.ID)
+		assert.Equal(t, orderID, order.OrderID)
 	})
 
-	// --- 3. ConfirmOrder ---
-	t.Run("ConfirmOrder - Success", func(t *testing.T) {
+	// --- 3. ConfirmOrderByOrderID ---
+	t.Run("ConfirmOrderByOrderID - Success", func(t *testing.T) {
 		mockInventory, mockQueue, orderRepo, ticketRepo := setupMock(t)
 		orderService := service.NewOrderService(db, orderRepo, ticketRepo, mockInventory, mockQueue)
 
+		orderID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440001")
+		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1}, nil).Once()
 		orderRepo.EXPECT().UpdateStatusWithLock(ctx, mock.Anything, 1, model.OrderStatusConfirmed).
 			Return(&model.Order{ID: 1}, nil).Once()
 
-		err := orderService.ConfirmOrder(ctx, 1)
+		err := orderService.ConfirmOrderByOrderID(ctx, orderID)
 		assert.NoError(t, err)
 	})
 
-	t.Run("ConfirmOrder - Failed On Update", func(t *testing.T) {
+	t.Run("ConfirmOrderByOrderID - Failed On Update", func(t *testing.T) {
 		mockInventory, mockQueue, orderRepo, ticketRepo := setupMock(t)
 		orderService := service.NewOrderService(db, orderRepo, ticketRepo, mockInventory, mockQueue)
 
+		orderID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440002")
+		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1}, nil).Once()
 		orderRepo.EXPECT().UpdateStatusWithLock(ctx, mock.Anything, 1, model.OrderStatusConfirmed).
 			Return(nil, errors.New("update error")).Once()
 
-		err := orderService.ConfirmOrder(ctx, 1)
+		err := orderService.ConfirmOrderByOrderID(ctx, orderID)
 		assert.Error(t, err)
 	})
 
-	// --- 4. CancelOrder ---
-	t.Run("CancelOrder - Success", func(t *testing.T) {
+	// --- 4. CancelOrderByOrderID ---
+	t.Run("CancelOrderByOrderID - Success", func(t *testing.T) {
 		mockInventory, mockQueue, orderRepo, ticketRepo := setupMock(t)
 		orderService := service.NewOrderService(db, orderRepo, ticketRepo, mockInventory, mockQueue)
 
+		orderID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440003")
 		cancelledOrder := &model.Order{ID: 1, TicketID: 10, Quantity: 2}
-
-		// 驗證順序：先更新狀態 -> 再加回庫存
+		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1}, nil).Once()
 		orderRepo.EXPECT().UpdateStatusWithLock(ctx, mock.Anything, 1, model.OrderStatusCancelled).
 			Return(cancelledOrder, nil).Once()
 		ticketRepo.EXPECT().IncrementStock(ctx, mock.Anything, 10, 2).
 			Return(nil).Once()
 
-		err := orderService.CancelOrder(ctx, 1)
+		err := orderService.CancelOrderByOrderID(ctx, orderID)
 		assert.NoError(t, err)
 	})
 
-	t.Run("CancelOrder - Failed On IncrementStock", func(t *testing.T) {
+	t.Run("CancelOrderByOrderID - Failed On IncrementStock", func(t *testing.T) {
 		mockInventory, mockQueue, orderRepo, ticketRepo := setupMock(t)
 		orderService := service.NewOrderService(db, orderRepo, ticketRepo, mockInventory, mockQueue)
 
+		orderID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440004")
 		cancelledOrder := &model.Order{ID: 1, TicketID: 10, Quantity: 2}
-
+		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1}, nil).Once()
 		orderRepo.EXPECT().UpdateStatusWithLock(ctx, mock.Anything, 1, model.OrderStatusCancelled).
 			Return(cancelledOrder, nil).Once()
-		// 模擬加回庫存失敗（觸發事務回滾行為）
 		ticketRepo.EXPECT().IncrementStock(ctx, mock.Anything, 10, 2).
 			Return(errors.New("db error")).Once()
 
-		err := orderService.CancelOrder(ctx, 1)
+		err := orderService.CancelOrderByOrderID(ctx, orderID)
 		assert.Error(t, err)
 	})
 
-	// --- 5. DeleteOrder ---
-	t.Run("DeleteOrder - Success", func(t *testing.T) {
+	// --- 5. DeleteOrderByOrderID ---
+	t.Run("DeleteOrderByOrderID - Success", func(t *testing.T) {
 		mockInventory, mockQueue, orderRepo, ticketRepo := setupMock(t)
 		orderService := service.NewOrderService(db, orderRepo, ticketRepo, mockInventory, mockQueue)
 
+		orderID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440005")
+		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1}, nil).Once()
 		orderRepo.EXPECT().Delete(ctx, 1).Return(nil).Once()
 
-		err := orderService.DeleteOrder(ctx, 1)
+		err := orderService.DeleteOrderByOrderID(ctx, orderID)
 		assert.NoError(t, err)
 	})
 }

@@ -82,6 +82,41 @@ func TestOrderRepository_FindByID(t *testing.T) {
 	})
 }
 
+func TestOrderRepository_FindByOrderID(t *testing.T) {
+	repo := repository.NewOrderRepository(getTestDB())
+	ctx := context.Background()
+
+	t.Run("Success", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		userID := createTestUser(t, "Test User", "test@example.com")
+		eventID := createTestEvent(t, "Test Event")
+		ticketID := createTestTicket(t, eventID, "Test Event", 50)
+		orderID := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
+		order, err := repo.FindByID(ctx, orderID)
+		require.NoError(t, err)
+
+		found, err := repo.FindByOrderID(ctx, order.OrderID)
+
+		require.NoError(t, err)
+		assert.Equal(t, orderID, found.ID)
+		assert.Equal(t, order.OrderID, found.OrderID)
+		assert.Equal(t, userID, found.UserID)
+		assert.Equal(t, ticketID, found.TicketID)
+	})
+
+	t.Run("NotFound", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		_, err := repo.FindByOrderID(ctx, uuid.New())
+
+		require.Error(t, err)
+		assert.Equal(t, apperrors.ErrOrderNotFound, err)
+	})
+}
+
 func TestOrderRepository_FindByUserID(t *testing.T) {
 	repo := repository.NewOrderRepository(getTestDB())
 	ctx := context.Background()
@@ -111,43 +146,6 @@ func TestOrderRepository_FindByUserID(t *testing.T) {
 
 		userID := createTestUser(t, "Test User", "test@example.com")
 		orders, err := repo.FindByUserID(ctx, userID)
-
-		require.NoError(t, err)
-		assert.Empty(t, orders)
-	})
-}
-
-func TestOrderRepository_FindByTicketID(t *testing.T) {
-	repo := repository.NewOrderRepository(getTestDB())
-	ctx := context.Background()
-
-	t.Run("Success", func(t *testing.T) {
-		cleanup := setupTestWithTruncate(t)
-		defer cleanup()
-
-		userID := createTestUser(t, "User", "user@example.com")
-		e1 := createTestEvent(t, "Concert A")
-		e2 := createTestEvent(t, "Concert B")
-		ticket1 := createTestTicket(t, e1, "Concert A", 100)
-		ticket2 := createTestTicket(t, e2, "Concert B", 100)
-
-		orderID1 := createTestOrder(t, userID, ticket1, 1, 100.0, model.OrderStatusPending)
-		createTestOrder(t, userID, ticket2, 1, 100.0, model.OrderStatusPending)
-
-		orders, err := repo.FindByTicketID(ctx, ticket1)
-
-		require.NoError(t, err)
-		assert.Len(t, orders, 1)
-		assert.Equal(t, orderID1, orders[0].ID)
-	})
-
-	t.Run("EmptyList", func(t *testing.T) {
-		cleanup := setupTestWithTruncate(t)
-		defer cleanup()
-
-		eventID := createTestEvent(t, "Concert")
-		ticketID := createTestTicket(t, eventID, "Concert", 100)
-		orders, err := repo.FindByTicketID(ctx, ticketID)
 
 		require.NoError(t, err)
 		assert.Empty(t, orders)

@@ -7,6 +7,7 @@ import (
 	apperrors "go-gin-high-concurrency/pkg/app_errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -14,8 +15,8 @@ import (
 type OrderRepository interface {
 	List(ctx context.Context) ([]*model.Order, error)
 	FindByID(ctx context.Context, id int) (*model.Order, error)
+	FindByOrderID(ctx context.Context, orderID uuid.UUID) (*model.Order, error)
 	FindByUserID(ctx context.Context, userID int) ([]*model.Order, error)
-	FindByTicketID(ctx context.Context, ticketID int) ([]*model.Order, error)
 	Delete(ctx context.Context, id int) error
 
 	// Transaction methods
@@ -36,17 +37,16 @@ func NewOrderRepository(pool *pgxpool.Pool) OrderRepository {
 
 func (r *OrderRepositoryImpl) Create(ctx context.Context, tx pgx.Tx, order *model.Order) (*model.Order, error) {
 	query := `
-		INSERT INTO orders (
-			request_id, user_id, ticket_id, quantity, total_price, status
-		)
+		INSERT INTO orders (request_id, user_id, ticket_id, quantity, total_price, status)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, request_id, user_id, ticket_id, quantity, total_price, status, created_at, updated_at
+		RETURNING id, order_id, request_id, user_id, ticket_id, quantity, total_price, status, created_at, updated_at
 	`
 
 	err := tx.QueryRow(ctx, query,
 		order.RequestID, order.UserID, order.TicketID, order.Quantity, order.TotalPrice, order.Status,
 	).Scan(
 		&order.ID,
+		&order.OrderID,
 		&order.RequestID,
 		&order.UserID,
 		&order.TicketID,
@@ -66,7 +66,7 @@ func (r *OrderRepositoryImpl) Create(ctx context.Context, tx pgx.Tx, order *mode
 
 func (r *OrderRepositoryImpl) List(ctx context.Context) ([]*model.Order, error) {
 	query := `
-		SELECT id, request_id, user_id, ticket_id, quantity, total_price, status,
+		SELECT id, order_id, request_id, user_id, ticket_id, quantity, total_price, status,
 		       created_at, updated_at, deleted_at
 		FROM orders
 		WHERE deleted_at IS NULL
@@ -85,6 +85,7 @@ func (r *OrderRepositoryImpl) List(ctx context.Context) ([]*model.Order, error) 
 		var order model.Order
 		err := rows.Scan(
 			&order.ID,
+			&order.OrderID,
 			&order.RequestID,
 			&order.UserID,
 			&order.TicketID,
@@ -110,7 +111,7 @@ func (r *OrderRepositoryImpl) List(ctx context.Context) ([]*model.Order, error) 
 
 func (r *OrderRepositoryImpl) FindByID(ctx context.Context, id int) (*model.Order, error) {
 	query := `
-		SELECT id, request_id, user_id, ticket_id, quantity, total_price, status,
+		SELECT id, order_id, request_id, user_id, ticket_id, quantity, total_price, status,
 		       created_at, updated_at, deleted_at
 		FROM orders
 		WHERE id = $1 AND deleted_at IS NULL
@@ -119,6 +120,40 @@ func (r *OrderRepositoryImpl) FindByID(ctx context.Context, id int) (*model.Orde
 	var order model.Order
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&order.ID,
+		&order.OrderID,
+		&order.RequestID,
+		&order.UserID,
+		&order.TicketID,
+		&order.Quantity,
+		&order.TotalPrice,
+		&order.Status,
+		&order.CreatedAt,
+		&order.UpdatedAt,
+		&order.DeletedAt,
+	)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, apperrors.ErrOrderNotFound
+		}
+		return nil, err
+	}
+
+	return &order, nil
+}
+
+func (r *OrderRepositoryImpl) FindByOrderID(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
+	query := `
+		SELECT id, order_id, request_id, user_id, ticket_id, quantity, total_price, status,
+		       created_at, updated_at, deleted_at
+		FROM orders
+		WHERE order_id = $1 AND deleted_at IS NULL
+	`
+
+	var order model.Order
+	err := r.pool.QueryRow(ctx, query, orderID).Scan(
+		&order.ID,
+		&order.OrderID,
 		&order.RequestID,
 		&order.UserID,
 		&order.TicketID,
@@ -142,7 +177,7 @@ func (r *OrderRepositoryImpl) FindByID(ctx context.Context, id int) (*model.Orde
 
 func (r *OrderRepositoryImpl) FindByUserID(ctx context.Context, userID int) ([]*model.Order, error) {
 	query := `
-		SELECT id, request_id, user_id, ticket_id, quantity, total_price, status,
+		SELECT id, order_id, request_id, user_id, ticket_id, quantity, total_price, status,
 		       created_at, updated_at, deleted_at
 		FROM orders
 		WHERE user_id = $1 AND deleted_at IS NULL
@@ -161,50 +196,7 @@ func (r *OrderRepositoryImpl) FindByUserID(ctx context.Context, userID int) ([]*
 		var order model.Order
 		err := rows.Scan(
 			&order.ID,
-			&order.RequestID,
-			&order.UserID,
-			&order.TicketID,
-			&order.Quantity,
-			&order.TotalPrice,
-			&order.Status,
-			&order.CreatedAt,
-			&order.UpdatedAt,
-			&order.DeletedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		orders = append(orders, &order)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return orders, nil
-}
-
-func (r *OrderRepositoryImpl) FindByTicketID(ctx context.Context, ticketID int) ([]*model.Order, error) {
-	query := `
-		SELECT id, request_id, user_id, ticket_id, quantity, total_price, status,
-		       created_at, updated_at, deleted_at
-		FROM orders
-		WHERE ticket_id = $1 AND deleted_at IS NULL
-		ORDER BY created_at DESC
-	`
-
-	rows, err := r.pool.Query(ctx, query, ticketID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var orders []*model.Order
-
-	for rows.Next() {
-		var order model.Order
-		err := rows.Scan(
-			&order.ID,
+			&order.OrderID,
 			&order.RequestID,
 			&order.UserID,
 			&order.TicketID,
@@ -238,13 +230,14 @@ func (r *OrderRepositoryImpl) UpdateStatusWithLock(
 		UPDATE orders
 		SET status = $1, updated_at = $2
 		WHERE id = $3
-		RETURNING id, request_id, user_id, ticket_id, quantity, total_price, status, created_at, updated_at
+		RETURNING id, order_id, request_id, user_id, ticket_id, quantity, total_price, status, created_at, updated_at
 	`
 
 	var order model.Order
 
 	err := tx.QueryRow(ctx, query, status, time.Now().UTC(), id).Scan(
 		&order.ID,
+		&order.OrderID,
 		&order.RequestID,
 		&order.UserID,
 		&order.TicketID,
