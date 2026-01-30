@@ -24,27 +24,6 @@ func (s OrderStatus) IsValid() bool {
 	return false
 }
 
-// CanTransitionTo 檢查是否可以轉換到目標狀態
-func (s OrderStatus) CanTransitionTo(target OrderStatus) bool {
-	transitions := map[OrderStatus][]OrderStatus{
-		OrderStatusPending:   {OrderStatusConfirmed, OrderStatusCancelled},
-		OrderStatusConfirmed: {OrderStatusCancelled},
-		OrderStatusCancelled: {}, // 不能轉換到任何狀態
-	}
-
-	allowed, ok := transitions[s]
-	if !ok {
-		return false
-	}
-
-	for _, status := range allowed {
-		if status == target {
-			return true
-		}
-	}
-	return false
-}
-
 // Order 訂單模型
 type Order struct {
 	ID         int         `json:"-" db:"id"` // 內部主鍵，不對外暴露

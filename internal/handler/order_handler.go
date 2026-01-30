@@ -29,7 +29,6 @@ func (h *OrderHandler) RegisterRoutes(r *gin.Engine) {
 		router.POST("orders", h.CreateOrder)
 		router.PUT("orders/:uuid/confirm", h.ConfirmOrder)
 		router.PUT("orders/:uuid/cancel", h.CancelOrder)
-		router.DELETE("orders/:uuid", h.DeleteOrder)
 	}
 }
 
@@ -107,22 +106,6 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 	h.handleOrderSuccess(c, nil, http.StatusOK)
 }
 
-func (h *OrderHandler) DeleteOrder(c *gin.Context) {
-	uuidStr := c.Param("uuid")
-	orderID, err := uuid.Parse(uuidStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order uuid"})
-		return
-	}
-	err = h.service.DeleteOrderByOrderID(c, orderID)
-	if err != nil {
-		h.handleOrderError(c, err, "DeleteOrder")
-		return
-	}
-
-	h.handleOrderSuccess(c, nil, http.StatusOK)
-}
-
 // Helper functions
 
 func (h *OrderHandler) handleOrderError(c *gin.Context, err error, operation string) {
@@ -147,6 +130,11 @@ func (h *OrderHandler) handleOrderError(c *gin.Context, err error, operation str
 		log.Warn("Order not found")
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "Order not found",
+		})
+	case errors.Is(err, apperrors.ErrInvalidOrderStatus):
+		log.Warn("Invalid order status")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid order status",
 		})
 	default:
 		log.Error("Unexpected error")

@@ -27,7 +27,6 @@ func setupOrderTestRouter(mockService *mocks.MockOrderService) *gin.Engine {
 	router.POST("/api/v1/orders", orderHandler.CreateOrder)
 	router.PUT("/api/v1/orders/:uuid/confirm", orderHandler.ConfirmOrder)
 	router.PUT("/api/v1/orders/:uuid/cancel", orderHandler.CancelOrder)
-	router.DELETE("/api/v1/orders/:uuid", orderHandler.DeleteOrder)
 
 	return router
 }
@@ -245,6 +244,21 @@ func TestConfirmOrder(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		mockService.AssertNotCalled(t, "ConfirmOrderByOrderID")
 	})
+
+	t.Run("InvalidOrderStatus", func(t *testing.T) {
+		mockService := mocks.NewMockOrderService(t)
+		router := setupOrderTestRouter(mockService)
+
+		validUUID := "550e8400-e29b-41d4-a716-44665544001a"
+		mockService.EXPECT().ConfirmOrderByOrderID(mock.Anything, mock.Anything).Return(apperrors.ErrInvalidOrderStatus).Once()
+
+		req := httptest.NewRequest("PUT", "/api/v1/orders/"+validUUID+"/confirm", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		mockService.AssertExpectations(t)
+	})
 }
 
 func TestCancelOrder(t *testing.T) {
@@ -289,48 +303,19 @@ func TestCancelOrder(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		mockService.AssertNotCalled(t, "CancelOrderByOrderID")
 	})
-}
 
-func TestDeleteOrder(t *testing.T) {
-	validUUID := "550e8400-e29b-41d4-a716-446655440030"
-	t.Run("Success", func(t *testing.T) {
+	t.Run("InvalidOrderStatus", func(t *testing.T) {
 		mockService := mocks.NewMockOrderService(t)
 		router := setupOrderTestRouter(mockService)
 
-		mockService.EXPECT().DeleteOrderByOrderID(mock.Anything, mock.Anything).Return(nil).Once()
+		validUUID := "550e8400-e29b-41d4-a716-44665544003a"
+		mockService.EXPECT().CancelOrderByOrderID(mock.Anything, mock.Anything).Return(apperrors.ErrInvalidOrderStatus).Once()
 
-		req := httptest.NewRequest("DELETE", "/api/v1/orders/"+validUUID, nil)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-		mockService.AssertExpectations(t)
-	})
-
-	t.Run("OrderNotFound", func(t *testing.T) {
-		mockService := mocks.NewMockOrderService(t)
-		router := setupOrderTestRouter(mockService)
-
-		notFoundUUID := "550e8400-e29b-41d4-a716-446655440099"
-		mockService.EXPECT().DeleteOrderByOrderID(mock.Anything, mock.Anything).Return(apperrors.ErrOrderNotFound).Once()
-
-		req := httptest.NewRequest("DELETE", "/api/v1/orders/"+notFoundUUID, nil)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusNotFound, w.Code)
-		mockService.AssertExpectations(t)
-	})
-
-	t.Run("InvalidUUID", func(t *testing.T) {
-		mockService := mocks.NewMockOrderService(t)
-		router := setupOrderTestRouter(mockService)
-
-		req := httptest.NewRequest("DELETE", "/api/v1/orders/invalid", nil)
+		req := httptest.NewRequest("PUT", "/api/v1/orders/"+validUUID+"/cancel", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
-		mockService.AssertNotCalled(t, "DeleteOrderByOrderID")
+		mockService.AssertExpectations(t)
 	})
 }

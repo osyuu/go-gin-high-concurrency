@@ -126,6 +126,9 @@ func (s *OrderServiceImpl) ConfirmOrderByOrderID(ctx context.Context, orderID uu
 	if err != nil {
 		return err
 	}
+	if order.Status != model.OrderStatusPending {
+		return apperrors.ErrInvalidOrderStatus
+	}
 	return s.confirmOrderByID(ctx, order.ID)
 }
 
@@ -133,6 +136,9 @@ func (s *OrderServiceImpl) CancelOrderByOrderID(ctx context.Context, orderID uui
 	order, err := s.repository.FindByOrderID(ctx, orderID)
 	if err != nil {
 		return err
+	}
+	if order.Status != model.OrderStatusPending {
+		return apperrors.ErrInvalidOrderStatus
 	}
 	return s.cancelOrderByID(ctx, order.ID)
 }

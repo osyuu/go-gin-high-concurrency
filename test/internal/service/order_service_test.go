@@ -200,7 +200,7 @@ func TestOrderService_RemainingMethods(t *testing.T) {
 		orderService := service.NewOrderService(db, orderRepo, ticketRepo, mockInventory, mockQueue)
 
 		orderID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440001")
-		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1}, nil).Once()
+		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1, Status: model.OrderStatusPending}, nil).Once()
 		orderRepo.EXPECT().UpdateStatusWithLock(ctx, mock.Anything, 1, model.OrderStatusConfirmed).
 			Return(&model.Order{ID: 1}, nil).Once()
 
@@ -208,12 +208,25 @@ func TestOrderService_RemainingMethods(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("ConfirmOrderByOrderID - ErrInvalidOrderStatus when not pending", func(t *testing.T) {
+		mockInventory, mockQueue, orderRepo, ticketRepo := setupMock(t)
+		orderService := service.NewOrderService(db, orderRepo, ticketRepo, mockInventory, mockQueue)
+
+		orderID := uuid.MustParse("550e8400-e29b-41d4-a716-44665544001a")
+		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1, Status: model.OrderStatusConfirmed}, nil).Once()
+
+		err := orderService.ConfirmOrderByOrderID(ctx, orderID)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, app_errors.ErrInvalidOrderStatus)
+		orderRepo.AssertNotCalled(t, "UpdateStatusWithLock")
+	})
+
 	t.Run("ConfirmOrderByOrderID - Failed On Update", func(t *testing.T) {
 		mockInventory, mockQueue, orderRepo, ticketRepo := setupMock(t)
 		orderService := service.NewOrderService(db, orderRepo, ticketRepo, mockInventory, mockQueue)
 
 		orderID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440002")
-		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1}, nil).Once()
+		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1, Status: model.OrderStatusPending}, nil).Once()
 		orderRepo.EXPECT().UpdateStatusWithLock(ctx, mock.Anything, 1, model.OrderStatusConfirmed).
 			Return(nil, errors.New("update error")).Once()
 
@@ -228,7 +241,7 @@ func TestOrderService_RemainingMethods(t *testing.T) {
 
 		orderID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440003")
 		cancelledOrder := &model.Order{ID: 1, TicketID: 10, Quantity: 2}
-		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1}, nil).Once()
+		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1, Status: model.OrderStatusPending}, nil).Once()
 		orderRepo.EXPECT().UpdateStatusWithLock(ctx, mock.Anything, 1, model.OrderStatusCancelled).
 			Return(cancelledOrder, nil).Once()
 		ticketRepo.EXPECT().IncrementStock(ctx, mock.Anything, 10, 2).
@@ -238,13 +251,27 @@ func TestOrderService_RemainingMethods(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("CancelOrderByOrderID - ErrInvalidOrderStatus when not pending", func(t *testing.T) {
+		mockInventory, mockQueue, orderRepo, ticketRepo := setupMock(t)
+		orderService := service.NewOrderService(db, orderRepo, ticketRepo, mockInventory, mockQueue)
+
+		orderID := uuid.MustParse("550e8400-e29b-41d4-a716-44665544003a")
+		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1, Status: model.OrderStatusCancelled}, nil).Once()
+
+		err := orderService.CancelOrderByOrderID(ctx, orderID)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, app_errors.ErrInvalidOrderStatus)
+		orderRepo.AssertNotCalled(t, "UpdateStatusWithLock")
+		ticketRepo.AssertNotCalled(t, "IncrementStock")
+	})
+
 	t.Run("CancelOrderByOrderID - Failed On IncrementStock", func(t *testing.T) {
 		mockInventory, mockQueue, orderRepo, ticketRepo := setupMock(t)
 		orderService := service.NewOrderService(db, orderRepo, ticketRepo, mockInventory, mockQueue)
 
 		orderID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440004")
 		cancelledOrder := &model.Order{ID: 1, TicketID: 10, Quantity: 2}
-		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1}, nil).Once()
+		orderRepo.EXPECT().FindByOrderID(ctx, orderID).Return(&model.Order{ID: 1, Status: model.OrderStatusPending}, nil).Once()
 		orderRepo.EXPECT().UpdateStatusWithLock(ctx, mock.Anything, 1, model.OrderStatusCancelled).
 			Return(cancelledOrder, nil).Once()
 		ticketRepo.EXPECT().IncrementStock(ctx, mock.Anything, 10, 2).
