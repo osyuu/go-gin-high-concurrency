@@ -1,0 +1,11 @@
+.git
+.gitignore
+*.md
+test
+scripts
+.env*
+docker-compose*.yml
+.dockerignore
+.air.toml
+.mockery.yml
+**/mocks/*.go

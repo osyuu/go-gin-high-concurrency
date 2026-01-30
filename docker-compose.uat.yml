@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: uat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: uat_db
+    volumes:
+      - uat_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d uat_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - uat-network
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./migrations:/migrations
+    command:
+      [
+        "-path",
+        "/migrations",
+        "-database",
+        "postgres://postgres:postgres@postgres:5432/uat_db?sslmode=disable",
+        "up",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - uat-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: uat-redis
+    restart: unless-stopped
+    networks:
+      - uat-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uat-app
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: uat_db
+      DB_SSL_MODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    networks:
+      - uat-network
+
+volumes:
+  uat_postgres_data:
+
+networks:
+  uat-network:
+    driver: bridge
