@@ -8,6 +8,7 @@ import (
 	"go-gin-high-concurrency/internal/repository"
 	apperrors "go-gin-high-concurrency/pkg/app_errors"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +22,8 @@ func TestOrderRepository_Create(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1, "Test Event", 100)
+		eventID := createTestEvent(t, "Test Event")
+		ticketID := createTestTicket(t, eventID, "Test Event", 100)
 
 		order := &model.Order{
 			UserID:     userID,
@@ -57,7 +59,8 @@ func TestOrderRepository_FindByID(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1002, "Test Event", 50)
+		eventID := createTestEvent(t, "Test Event")
+		ticketID := createTestTicket(t, eventID, "Test Event", 50)
 		orderID := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
 
 		found, err := repo.FindByID(ctx, orderID)
@@ -89,7 +92,8 @@ func TestOrderRepository_FindByUserID(t *testing.T) {
 
 		user1 := createTestUser(t, "User 1", "user1@example.com")
 		user2 := createTestUser(t, "User 2", "user2@example.com")
-		ticketID := createTestTicket(t, 1001, "Concert", 100)
+		eventID := createTestEvent(t, "Concert")
+		ticketID := createTestTicket(t, eventID, "Concert", 100)
 
 		orderID1 := createTestOrder(t, user1, ticketID, 1, 100.0, model.OrderStatusPending)
 		createTestOrder(t, user2, ticketID, 1, 100.0, model.OrderStatusPending)
@@ -122,8 +126,10 @@ func TestOrderRepository_FindByTicketID(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "User", "user@example.com")
-		ticket1 := createTestTicket(t, 1001, "Concert A", 100)
-		ticket2 := createTestTicket(t, 1002, "Concert B", 100)
+		e1 := createTestEvent(t, "Concert A")
+		e2 := createTestEvent(t, "Concert B")
+		ticket1 := createTestTicket(t, e1, "Concert A", 100)
+		ticket2 := createTestTicket(t, e2, "Concert B", 100)
 
 		orderID1 := createTestOrder(t, userID, ticket1, 1, 100.0, model.OrderStatusPending)
 		createTestOrder(t, userID, ticket2, 1, 100.0, model.OrderStatusPending)
@@ -139,7 +145,8 @@ func TestOrderRepository_FindByTicketID(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicket(t, 1001, "Concert", 100)
+		eventID := createTestEvent(t, "Concert")
+		ticketID := createTestTicket(t, eventID, "Concert", 100)
 		orders, err := repo.FindByTicketID(ctx, ticketID)
 
 		require.NoError(t, err)
@@ -166,7 +173,8 @@ func TestOrderRepository_List(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1001, "Concert A", 100)
+		eventID := createTestEvent(t, "Concert A")
+		ticketID := createTestTicket(t, eventID, "Concert A", 100)
 
 		orderID1 := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
 		orderID2 := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusConfirmed)
@@ -186,7 +194,8 @@ func TestOrderRepository_List(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1001, "Concert", 100)
+		eventID := createTestEvent(t, "Concert")
+		ticketID := createTestTicket(t, eventID, "Concert", 100)
 
 		orderID1 := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
 		orderID2 := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
@@ -211,7 +220,8 @@ func TestOrderRepository_Delete(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1001, "Concert A", 100)
+		eventID := createTestEvent(t, "Concert A")
+		ticketID := createTestTicket(t, eventID, "Concert A", 100)
 		orderID := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
 
 		err := repo.Delete(ctx, orderID)
@@ -243,7 +253,8 @@ func TestOrderRepository_UpdateStatusWithLock(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1001, "Concert A", 100)
+		eventID := createTestEvent(t, "Concert A")
+		ticketID := createTestTicket(t, eventID, "Concert A", 100)
 		orderID := createTestOrder(t, userID, ticketID, 1, 100.0, model.OrderStatusPending)
 
 		tx, txCleanup := setupTestWithTransaction(t)
@@ -278,7 +289,8 @@ func TestOrderRepository_GetUserTicketOrderCount(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1001, "Concert", 100)
+		eventID := createTestEvent(t, "Concert")
+		ticketID := createTestTicket(t, eventID, "Concert", 100)
 		createTestOrder(t, userID, ticketID, 3, 3000.0, model.OrderStatusPending)
 
 		tx, txCleanup := setupTestWithTransaction(t)
@@ -295,7 +307,8 @@ func TestOrderRepository_GetUserTicketOrderCount(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1002, "Concert", 100)
+		eventID := createTestEvent(t, "Concert")
+		ticketID := createTestTicket(t, eventID, "Concert", 100)
 
 		tx, txCleanup := setupTestWithTransaction(t)
 		defer txCleanup()
@@ -311,7 +324,8 @@ func TestOrderRepository_GetUserTicketOrderCount(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "Test User", "test@example.com")
-		ticketID := createTestTicket(t, 1003, "Concert", 100)
+		eventID := createTestEvent(t, "Concert")
+		ticketID := createTestTicket(t, eventID, "Concert", 100)
 
 		createTestOrder(t, userID, ticketID, 2, 2000.0, model.OrderStatusPending)
 		createTestOrder(t, userID, ticketID, 3, 3000.0, model.OrderStatusCancelled)
@@ -335,7 +349,8 @@ func TestOrderRepository_UniqueRequestID(t *testing.T) {
 		defer cleanup()
 
 		userID := createTestUser(t, "User A", "a@example.com")
-		ticketID := createTestTicket(t, 101, "Event", 100)
+		eventID := createTestEvent(t, "Event")
+		ticketID := createTestTicket(t, eventID, "Event", 100)
 
 		// 共用的 request_id
 		sharedRequestID := "same-request-id-123"
@@ -377,4 +392,21 @@ func TestOrderRepository_UniqueRequestID(t *testing.T) {
 		assert.Contains(t, err.Error(), "unique")
 		assert.Contains(t, err.Error(), "request_id")
 	})
+}
+
+/* 輔助函數 */
+
+// createTestOrder 創建測試用 order，回傳 orders.id
+func createTestOrder(t *testing.T, userID, ticketID int, quantity int, totalPrice float64, status model.OrderStatus) int {
+	t.Helper()
+	ctx := context.Background()
+	query := `
+		INSERT INTO orders (request_id, user_id, ticket_id, quantity, total_price, status)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id
+	`
+	var id int
+	err := testDB.QueryRow(ctx, query, uuid.New().String(), userID, ticketID, quantity, totalPrice, status).Scan(&id)
+	require.NoError(t, err)
+	return id
 }

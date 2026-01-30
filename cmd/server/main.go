@@ -40,6 +40,7 @@ func main() {
 	orderRepository := repository.NewOrderRepository(pool)
 	ticketRepository := repository.NewTicketRepository(pool)
 	userRepository := repository.NewUserRepository(pool)
+	eventRepository := repository.NewEventRepository(pool)
 	_ = userRepository // 保留以備將來使用
 
 	// 初始化 Cache
@@ -53,6 +54,7 @@ func main() {
 
 	// 初始化 Service
 	orderService := service.NewOrderService(pool, orderRepository, ticketRepository, inventoryManager, orderQueue)
+	eventService := service.NewEventService(eventRepository)
 
 	// Worker 使用 Background context（長期運行的後台任務，獨立於 HTTP Server）
 	workerCtx, workerCancel := context.WithCancel(context.Background())
@@ -66,6 +68,7 @@ func main() {
 
 	// 初始化 Handler 和 Router
 	orderHandler := handler.NewOrderHandler(orderService)
+	eventHandler := handler.NewEventHandler(eventService)
 	router := gin.Default()
 
 	// Health check
@@ -75,8 +78,9 @@ func main() {
 		})
 	})
 
-	// 註冊訂單相關路由
+	// 註冊路由
 	orderHandler.RegisterRoutes(router)
+	eventHandler.RegisterRoutes(router)
 
 	// 創建 HTTP Server（使用 http.Server 以支持優雅關閉）
 	srv := &http.Server{

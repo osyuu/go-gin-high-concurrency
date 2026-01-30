@@ -22,4 +22,7 @@ var (
 	// User related errors
 	ErrUserNotFound   = errors.New("user not found")
 	ErrDuplicateEmail = errors.New("email already exists")
+
+	// Event related errors
+	ErrEventNotFound = errors.New("event not found")
 )

@@ -3,14 +3,13 @@ package repository
 import (
 	"context"
 	"fmt"
-	"go-gin-high-concurrency/config"
-	"go-gin-high-concurrency/internal/database"
-	"go-gin-high-concurrency/internal/model"
 	"log"
 	"os"
 	"testing"
 
-	"github.com/google/uuid"
+	"go-gin-high-concurrency/config"
+	"go-gin-high-concurrency/internal/database"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -47,8 +46,8 @@ func setupTestWithTruncate(t *testing.T) func() {
 	t.Helper()
 	ctx := context.Background()
 
-	// 清空所有測試資料，保留 schema
-	_, err := testDB.Exec(ctx, "TRUNCATE tickets, orders, users RESTART IDENTITY CASCADE")
+	// 清空所有測試資料，保留 schema（子表先清：tickets, orders；再清 users, events）
+	_, err := testDB.Exec(ctx, "TRUNCATE tickets, orders, users, events RESTART IDENTITY CASCADE")
 	if err != nil {
 		t.Fatalf("Failed to truncate tables: %v", err)
 	}
@@ -85,76 +84,6 @@ func getTestDB() *pgxpool.Pool {
 		panic("testDB is not initialized. Make sure TestMain has run.")
 	}
 	return testDB
-}
-
-// createTestTicket 輔助函數：創建測試用的 ticket
-// total_stock 和 remaining_stock 都设置为 stock
-func createTestTicket(t *testing.T, eventID int, eventName string, stock int) int {
-	t.Helper()
-	return createTestTicketWithStock(t, eventID, eventName, stock, stock)
-}
-
-// createTestTicketWithStock 輔助函數：創建測試用的 ticket，可以分別指定總庫存和剩餘庫存
-func createTestTicketWithStock(t *testing.T, eventID int, eventName string, totalStock, remainingStock int) int {
-	t.Helper()
-	ctx := context.Background()
-
-	query := `
-		INSERT INTO tickets (event_id, event_name, price, total_stock, remaining_stock, max_per_user)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id
-	`
-
-	var id int
-	err := testDB.QueryRow(ctx, query,
-		eventID, eventName, 1000.0, totalStock, remainingStock, 5,
-	).Scan(&id)
-
-	if err != nil {
-		t.Fatalf("Failed to create test ticket: %v", err)
-	}
-
-	return id
-}
-
-// createTestUser 輔助函數：創建測試用的 user
-func createTestUser(t *testing.T, name, email string) int {
-	t.Helper()
-	ctx := context.Background()
-
-	query := `
-		INSERT INTO users (name, email)
-		VALUES ($1, $2)
-		RETURNING id
-	`
-
-	var id int
-	err := testDB.QueryRow(ctx, query, name, email).Scan(&id)
-	if err != nil {
-		t.Fatalf("Failed to create test user: %v", err)
-	}
-
-	return id
-}
-
-func createTestOrder(t *testing.T, userID, ticketID int, quantity int, totalPrice float64, status model.OrderStatus) int {
-	t.Helper()
-	ctx := context.Background()
-
-	query := `
-		INSERT INTO orders (request_id, user_id, ticket_id, quantity, total_price, status)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id
-	`
-
-	var id int
-	requestID := uuid.New().String()
-	err := testDB.QueryRow(ctx, query, requestID, userID, ticketID, quantity, totalPrice, status).Scan(&id)
-	if err != nil {
-		t.Fatalf("Failed to create test order: %v", err)
-	}
-
-	return id
 }
 
 // assertRowCount 輔助函數：檢查資料表的行數

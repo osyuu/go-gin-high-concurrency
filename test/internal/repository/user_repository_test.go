@@ -201,3 +201,16 @@ func TestUserRepository_Delete(t *testing.T) {
 		assert.Equal(t, apperrors.ErrUserNotFound, err)
 	})
 }
+
+/* 輔助函數 */
+
+// createTestUser 創建測試用 user，回傳 users.id
+func createTestUser(t *testing.T, name, email string) int {
+	t.Helper()
+	ctx := context.Background()
+	query := `INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id`
+	var id int
+	err := testDB.QueryRow(ctx, query, name, email).Scan(&id)
+	require.NoError(t, err)
+	return id
+}

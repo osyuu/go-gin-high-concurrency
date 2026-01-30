@@ -16,12 +16,13 @@ func TestTicketRepository_Create(t *testing.T) {
 	cleanup := setupTestWithTruncate(t)
 	defer cleanup()
 
+	eventID := createTestEvent(t, "Test Concert 2025")
 	repo := repository.NewTicketRepository(getTestDB())
 	ctx := context.Background()
 
 	ticket := &model.Ticket{
-		EventID:        1001,
-		EventName:      "Test Concert 2025",
+		EventID:        eventID,
+		Name:           "Test Concert 2025",
 		Price:          1500.0,
 		TotalStock:     100,
 		RemainingStock: 100,
@@ -32,8 +33,8 @@ func TestTicketRepository_Create(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotZero(t, created.ID)
-	assert.Equal(t, 1001, created.EventID)
-	assert.Equal(t, "Test Concert 2025", created.EventName)
+	assert.Equal(t, eventID, created.EventID)
+	assert.Equal(t, "Test Concert 2025", created.Name)
 	assert.Equal(t, 1500.0, created.Price)
 	assert.Equal(t, 100, created.TotalStock)
 	assert.Equal(t, 100, created.RemainingStock)
@@ -50,14 +51,15 @@ func TestTicketRepository_FindByID(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicket(t, 1002, "Test Event", 50)
+		eventID := createTestEvent(t, "Test Event")
+		ticketID := createTestTicket(t, eventID, "Test Event", 50)
 
 		found, err := repo.FindByID(ctx, ticketID)
 
 		require.NoError(t, err)
 		assert.Equal(t, ticketID, found.ID)
-		assert.Equal(t, 1002, found.EventID)
-		assert.Equal(t, "Test Event", found.EventName)
+		assert.Equal(t, eventID, found.EventID)
+		assert.Equal(t, "Test Event", found.Name)
 		assert.Equal(t, 50, found.TotalStock)
 	})
 
@@ -90,17 +92,20 @@ func TestTicketRepository_List(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		createTestTicket(t, 1001, "Concert A", 100)
-		createTestTicket(t, 1002, "Concert B", 200)
-		createTestTicket(t, 1003, "Concert C", 300)
+		e1 := createTestEvent(t, "Concert A")
+		e2 := createTestEvent(t, "Concert B")
+		e3 := createTestEvent(t, "Concert C")
+		createTestTicket(t, e1, "Concert A", 100)
+		createTestTicket(t, e2, "Concert B", 200)
+		createTestTicket(t, e3, "Concert C", 300)
 
 		tickets, err := repo.List(ctx)
 
 		require.NoError(t, err)
 		assert.Len(t, tickets, 3)
-		assert.Equal(t, 1003, tickets[0].EventID)
-		assert.Equal(t, 1002, tickets[1].EventID)
-		assert.Equal(t, 1001, tickets[2].EventID)
+		assert.Equal(t, e3, tickets[0].EventID)
+		assert.Equal(t, e2, tickets[1].EventID)
+		assert.Equal(t, e1, tickets[2].EventID)
 	})
 }
 
@@ -112,12 +117,13 @@ func TestTicketRepository_Update(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicket(t, 1001, "Original", 100)
+		eventID := createTestEvent(t, "Original")
+		ticketID := createTestTicket(t, eventID, "Original", 100)
 		eventName := "Updated Concert"
 		price := 3000.0
 		maxPerUser := 8
 		updates := repository.UpdateTicketParams{
-			EventName:  &eventName,
+			Name:       &eventName,
 			Price:      &price,
 			MaxPerUser: &maxPerUser,
 		}
@@ -125,7 +131,7 @@ func TestTicketRepository_Update(t *testing.T) {
 		updated, err := repo.Update(ctx, ticketID, updates)
 
 		require.NoError(t, err)
-		assert.Equal(t, "Updated Concert", updated.EventName)
+		assert.Equal(t, "Updated Concert", updated.Name)
 		assert.Equal(t, 3000.0, updated.Price)
 		assert.Equal(t, 8, updated.MaxPerUser)
 		assert.Equal(t, 100, updated.TotalStock) // 未更新的字段保持不变
@@ -137,7 +143,7 @@ func TestTicketRepository_Update(t *testing.T) {
 
 		eventName := "Won't Update"
 		updates := repository.UpdateTicketParams{
-			EventName: &eventName,
+			Name: &eventName,
 		}
 
 		_, err := repo.Update(ctx, 99999, updates)
@@ -150,7 +156,8 @@ func TestTicketRepository_Update(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicket(t, 1003, "Concert", 100)
+		eventID := createTestEvent(t, "Concert")
+		ticketID := createTestTicket(t, eventID, "Concert", 100)
 		updates := repository.UpdateTicketParams{}
 
 		_, err := repo.Update(ctx, ticketID, updates)
@@ -168,7 +175,8 @@ func TestTicketRepository_Delete(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicket(t, 1001, "To Delete", 100)
+		eventID := createTestEvent(t, "To Delete")
+		ticketID := createTestTicket(t, eventID, "To Delete", 100)
 
 		err := repo.Delete(ctx, ticketID)
 		require.NoError(t, err)
@@ -193,7 +201,8 @@ func TestTicketRepository_Delete(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicket(t, 1002, "Already Deleted", 100)
+		eventID := createTestEvent(t, "Already Deleted")
+		ticketID := createTestTicket(t, eventID, "Already Deleted", 100)
 
 		err := repo.Delete(ctx, ticketID)
 		require.NoError(t, err)
@@ -213,7 +222,8 @@ func TestTicketRepository_FindByIDWithLock(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicket(t, 1001, "Lock Test", 100)
+		eventID := createTestEvent(t, "Lock Test")
+		ticketID := createTestTicket(t, eventID, "Lock Test", 100)
 
 		tx, txCleanup := setupTestWithTransaction(t)
 		defer txCleanup()
@@ -247,7 +257,8 @@ func TestTicketRepository_DecrementStock(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicket(t, 1001, "Test Event", 100)
+		eventID := createTestEvent(t, "Test Event")
+		ticketID := createTestTicket(t, eventID, "Test Event", 100)
 
 		tx, txCleanup := setupTestWithTransaction(t)
 		defer txCleanup()
@@ -265,7 +276,8 @@ func TestTicketRepository_DecrementStock(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicket(t, 1002, "Test Event", 5)
+		eventID := createTestEvent(t, "Test Event")
+		ticketID := createTestTicket(t, eventID, "Test Event", 5)
 
 		tx, txCleanup := setupTestWithTransaction(t)
 		defer txCleanup()
@@ -281,7 +293,8 @@ func TestTicketRepository_DecrementStock(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicket(t, 1003, "Test Event", 50)
+		eventID := createTestEvent(t, "Test Event")
+		ticketID := createTestTicket(t, eventID, "Test Event", 50)
 
 		tx, txCleanup := setupTestWithTransaction(t)
 		defer txCleanup()
@@ -317,7 +330,8 @@ func TestTicketRepository_IncrementStock(t *testing.T) {
 		defer cleanup()
 
 		// 创建一个已售出部分的票（100 张总库存，剩余 70 张）
-		ticketID := createTestTicketWithStock(t, 1001, "Test Event", 100, 70)
+		eventID := createTestEvent(t, "Test Event")
+		ticketID := createTestTicketWithStock(t, eventID, "Test Event", 100, 70)
 
 		tx, txCleanup := setupTestWithTransaction(t)
 		defer txCleanup()
@@ -336,7 +350,8 @@ func TestTicketRepository_IncrementStock(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicketWithStock(t, 1002, "Test Event", 100, 90)
+		eventID := createTestEvent(t, "Test Event")
+		ticketID := createTestTicketWithStock(t, eventID, "Test Event", 100, 90)
 
 		tx, txCleanup := setupTestWithTransaction(t)
 		defer txCleanup()
@@ -354,7 +369,8 @@ func TestTicketRepository_IncrementStock(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicketWithStock(t, 1003, "Test Event", 100, 90)
+		eventID := createTestEvent(t, "Test Event")
+		ticketID := createTestTicketWithStock(t, eventID, "Test Event", 100, 90)
 
 		tx, txCleanup := setupTestWithTransaction(t)
 		defer txCleanup()
@@ -387,7 +403,8 @@ func TestTicketRepository_AddStock(t *testing.T) {
 		defer cleanup()
 
 		// total_stock = 100, remaining_stock = 80（已售出 20 张）
-		ticketID := createTestTicketWithStock(t, 1001, "Concert", 100, 80)
+		eventID := createTestEvent(t, "Concert")
+		ticketID := createTestTicketWithStock(t, eventID, "Concert", 100, 80)
 
 		tx, txCleanup := setupTestWithTransaction(t)
 		defer txCleanup()
@@ -407,7 +424,8 @@ func TestTicketRepository_AddStock(t *testing.T) {
 		defer cleanup()
 
 		// total_stock = 100, remaining_stock = 0（已售罄）
-		ticketID := createTestTicketWithStock(t, 1002, "Concert", 100, 0)
+		eventID := createTestEvent(t, "Concert")
+		ticketID := createTestTicketWithStock(t, eventID, "Concert", 100, 0)
 
 		tx, txCleanup := setupTestWithTransaction(t)
 		defer txCleanup()
@@ -426,7 +444,8 @@ func TestTicketRepository_AddStock(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicket(t, 1003, "Concert", 100)
+		eventID := createTestEvent(t, "Concert")
+		ticketID := createTestTicket(t, eventID, "Concert", 100)
 
 		tx, txCleanup := setupTestWithTransaction(t)
 		defer txCleanup()
@@ -441,7 +460,8 @@ func TestTicketRepository_AddStock(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		ticketID := createTestTicket(t, 1004, "Concert", 100)
+		eventID := createTestEvent(t, "Concert")
+		ticketID := createTestTicket(t, eventID, "Concert", 100)
 
 		tx, txCleanup := setupTestWithTransaction(t)
 		defer txCleanup()
@@ -464,4 +484,27 @@ func TestTicketRepository_AddStock(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, apperrors.ErrTicketNotFound, err)
 	})
+}
+
+/* 輔助函數 */
+
+// createTestTicket 創建測試用 ticket
+func createTestTicket(t *testing.T, eventID int, eventName string, stock int) int {
+	t.Helper()
+	return createTestTicketWithStock(t, eventID, eventName, stock, stock)
+}
+
+// createTestTicketWithStock 創建測試用 ticket，可分別指定總庫存與剩餘庫存
+func createTestTicketWithStock(t *testing.T, eventID int, eventName string, totalStock, remainingStock int) int {
+	t.Helper()
+	ctx := context.Background()
+	query := `
+		INSERT INTO tickets (event_id, name, price, total_stock, remaining_stock, max_per_user)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id
+	`
+	var id int
+	err := testDB.QueryRow(ctx, query, eventID, eventName, 1000.0, totalStock, remainingStock, 5).Scan(&id)
+	require.NoError(t, err)
+	return id
 }
