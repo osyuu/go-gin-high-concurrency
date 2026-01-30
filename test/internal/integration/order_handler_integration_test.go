@@ -102,11 +102,16 @@ func setupIntegrationTest(t *testing.T, useFailingQueue bool) (*gin.Engine, func
 		}
 	}
 
-	// 初始化 Handler 和 Router
+	// 初始化 Handler 和 Router（含 Event API，供 createTestEventViaAPI 使用）
+	eventRepo := repository.NewEventRepository(testDB)
+	eventService := service.NewEventService(eventRepo)
+	eventHandler := handler.NewEventHandler(eventService)
+
 	orderHandler := handler.NewOrderHandler(orderService)
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	orderHandler.RegisterRoutes(router)
+	eventHandler.RegisterRoutes(router)
 
 	cleanup := func() {
 		if workerCancel != nil {
@@ -122,7 +127,7 @@ func setupIntegrationTest(t *testing.T, useFailingQueue bool) (*gin.Engine, func
 
 func cleanupDB(ctx context.Context, t *testing.T) {
 	t.Helper()
-	_, err := testDB.Exec(ctx, "TRUNCATE tickets, orders, users RESTART IDENTITY CASCADE")
+	_, err := testDB.Exec(ctx, "TRUNCATE tickets, orders, users, events RESTART IDENTITY CASCADE")
 	if err != nil {
 		t.Logf("Warning: failed to truncate tables: %v", err)
 	}
@@ -150,14 +155,29 @@ func createTestUser(t *testing.T, name, email string) int {
 	return created.ID
 }
 
-func createTestTicket(t *testing.T, eventName string, price float64, totalStock, maxPerUser int) int {
+// createTestEventViaAPI 透過 POST /api/v1/events 建立活動，回傳 events.id（供 createTestTicket 關聯）
+func createTestEventViaAPI(t *testing.T, router *gin.Engine, name string) int {
+	t.Helper()
+	body := map[string]interface{}{"name": name}
+	req := createHTTPRequest("POST", "/api/v1/events", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusCreated, w.Code, "create event via API: %s", w.Body.String())
+	var event model.Event
+	err := json.NewDecoder(w.Body).Decode(&event)
+	require.NoError(t, err)
+	return event.ID
+}
+
+func createTestTicket(t *testing.T, router *gin.Engine, eventName string, price float64, totalStock, maxPerUser int) int {
 	t.Helper()
 	ctx := context.Background()
+	eventID := createTestEventViaAPI(t, router, eventName)
 	ticketRepo := repository.NewTicketRepository(testDB)
 
 	ticket := &model.Ticket{
-		EventID:        int(time.Now().UnixNano() % 1000000), // 使用時間戳作為 event_id
-		EventName:      eventName,
+		EventID:        eventID,
+		Name:           eventName,
 		Price:          price,
 		TotalStock:     totalStock,
 		RemainingStock: totalStock,
@@ -211,7 +231,7 @@ func TestOrderHandler_Integration_EndToEnd(t *testing.T) {
 
 	// 1. 準備測試資料
 	userID := createTestUser(t, "Test User", "test@example.com")
-	ticketID := createTestTicket(t, "Test Event", 100.0, 100, 2)
+	ticketID := createTestTicket(t, router, "Test Event", 100.0, 100, 2)
 
 	// 2. 預熱 Redis 庫存
 	inventoryManager := cache.NewRedisTicketInventoryManager(testRdb)
@@ -296,7 +316,7 @@ func TestOrderHandler_Integration_RollbackOnPublishFailure(t *testing.T) {
 
 	// 1. 準備測試資料
 	userID := createTestUser(t, "Test User", "test@example.com")
-	ticketID := createTestTicket(t, "Test Event", 100.0, 100, 2)
+	ticketID := createTestTicket(t, router, "Test Event", 100.0, 100, 2)
 
 	// 2. 預熱 Redis 庫存
 	inventoryManager := cache.NewRedisTicketInventoryManager(testRdb)
@@ -342,7 +362,7 @@ func TestOrderHandler_Integration_InsufficientStock(t *testing.T) {
 
 	// 1. 準備測試資料（庫存只有 1 張）
 	userID := createTestUser(t, "Test User", "test@example.com")
-	ticketID := createTestTicket(t, "Test Event", 100.0, 1, 2)
+	ticketID := createTestTicket(t, router, "Test Event", 100.0, 1, 2)
 
 	// 2. 預熱 Redis 庫存（只有 1 張）
 	inventoryManager := cache.NewRedisTicketInventoryManager(testRdb)
@@ -375,7 +395,7 @@ func TestOrderHandler_Integration_ExceedsMaxPerUser(t *testing.T) {
 
 	// 1. 準備測試資料（個人限制 2 張）
 	userID := createTestUser(t, "Test User", "test@example.com")
-	ticketID := createTestTicket(t, "Test Event", 100.0, 100, 2)
+	ticketID := createTestTicket(t, router, "Test Event", 100.0, 100, 2)
 
 	// 2. 預熱 Redis 庫存
 	inventoryManager := cache.NewRedisTicketInventoryManager(testRdb)
@@ -420,7 +440,7 @@ func TestOrderHandler_Integration_ConcurrentOrders(t *testing.T) {
 
 	// 1. 準備測試資料（庫存 10 張）
 	userID := createTestUser(t, "Test User", "test@example.com")
-	ticketID := createTestTicket(t, "Test Event", 100.0, 10, 10)
+	ticketID := createTestTicket(t, router, "Test Event", 100.0, 10, 10)
 
 	// 2. 預熱 Redis 庫存
 	inventoryManager := cache.NewRedisTicketInventoryManager(testRdb)

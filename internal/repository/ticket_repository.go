@@ -13,7 +13,7 @@ import (
 )
 
 type UpdateTicketParams struct {
-	EventName  *string
+	Name       *string
 	Price      *float64
 	MaxPerUser *int
 }
@@ -45,19 +45,19 @@ func NewTicketRepository(pool *pgxpool.Pool) TicketRepository {
 func (r *TicketRepositoryImpl) Create(ctx context.Context, ticket *model.Ticket) (*model.Ticket, error) {
 	query := `
 		INSERT INTO tickets (
-		event_id, event_name, price, total_stock, remaining_stock, max_per_user)
+		event_id, name, price, total_stock, remaining_stock, max_per_user)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, event_id, event_name, price, total_stock, 
+		RETURNING id, event_id, name, price, total_stock, 
 			remaining_stock, max_per_user, created_at, updated_at
 	`
 
 	err := r.pool.QueryRow(ctx, query,
-		ticket.EventID, ticket.EventName, ticket.Price,
+		ticket.EventID, ticket.Name, ticket.Price,
 		ticket.TotalStock, ticket.RemainingStock, ticket.MaxPerUser,
 	).Scan(
 		&ticket.ID,
 		&ticket.EventID,
-		&ticket.EventName,
+		&ticket.Name,
 		&ticket.Price,
 		&ticket.TotalStock,
 		&ticket.RemainingStock,
@@ -75,7 +75,7 @@ func (r *TicketRepositoryImpl) Create(ctx context.Context, ticket *model.Ticket)
 
 func (r *TicketRepositoryImpl) List(ctx context.Context) ([]*model.Ticket, error) {
 	query := `
-		SELECT id, event_id, event_name, price,
+		SELECT id, event_id, name, price,
 				total_stock, remaining_stock, max_per_user,
 				created_at, updated_at, deleted_at
 		FROM tickets
@@ -96,7 +96,7 @@ func (r *TicketRepositoryImpl) List(ctx context.Context) ([]*model.Ticket, error
 		err := rows.Scan(
 			&ticket.ID,
 			&ticket.EventID,
-			&ticket.EventName,
+			&ticket.Name,
 			&ticket.Price,
 			&ticket.TotalStock,
 			&ticket.RemainingStock,
@@ -120,7 +120,7 @@ func (r *TicketRepositoryImpl) List(ctx context.Context) ([]*model.Ticket, error
 
 func (r *TicketRepositoryImpl) FindByID(ctx context.Context, id int) (*model.Ticket, error) {
 	query := `
-		SELECT id, event_id, event_name, price,
+		SELECT id, event_id, name, price,
 				total_stock, remaining_stock, max_per_user,
 				created_at, updated_at, deleted_at
 		FROM tickets
@@ -131,7 +131,7 @@ func (r *TicketRepositoryImpl) FindByID(ctx context.Context, id int) (*model.Tic
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&ticket.ID,
 		&ticket.EventID,
-		&ticket.EventName,
+		&ticket.Name,
 		&ticket.Price,
 		&ticket.TotalStock,
 		&ticket.RemainingStock,
@@ -153,7 +153,7 @@ func (r *TicketRepositoryImpl) FindByID(ctx context.Context, id int) (*model.Tic
 
 func (r *TicketRepositoryImpl) FindByIDWithLock(ctx context.Context, tx pgx.Tx, id int) (*model.Ticket, error) {
 	query := `
-		SELECT id, event_id, event_name, price,
+		SELECT id, event_id, name, price,
 				total_stock, remaining_stock, max_per_user,
 				created_at, updated_at, deleted_at
 		FROM tickets
@@ -165,7 +165,7 @@ func (r *TicketRepositoryImpl) FindByIDWithLock(ctx context.Context, tx pgx.Tx, 
 	err := tx.QueryRow(ctx, query, id).Scan(
 		&ticket.ID,
 		&ticket.EventID,
-		&ticket.EventName,
+		&ticket.Name,
 		&ticket.Price,
 		&ticket.TotalStock,
 		&ticket.RemainingStock,
@@ -190,9 +190,9 @@ func (r *TicketRepositoryImpl) Update(ctx context.Context, id int, params Update
 	args := []interface{}{}
 	argPos := 1
 
-	if params.EventName != nil {
-		sets = append(sets, fmt.Sprintf("event_name = $%d", argPos))
-		args = append(args, *params.EventName)
+	if params.Name != nil {
+		sets = append(sets, fmt.Sprintf("name = $%d", argPos))
+		args = append(args, *params.Name)
 		argPos++
 	}
 
@@ -224,7 +224,7 @@ func (r *TicketRepositoryImpl) Update(ctx context.Context, id int, params Update
 		UPDATE tickets
 		SET %s
 		WHERE id = $%d
-        RETURNING id, event_id, event_name, price, total_stock, 
+        RETURNING id, event_id, name, price, total_stock, 
                   remaining_stock, max_per_user, created_at, updated_at
 	`, strings.Join(sets, ", "), argPos)
 
@@ -233,7 +233,7 @@ func (r *TicketRepositoryImpl) Update(ctx context.Context, id int, params Update
 	err := r.pool.QueryRow(ctx, query, args...).Scan(
 		&ticket.ID,
 		&ticket.EventID,
-		&ticket.EventName,
+		&ticket.Name,
 		&ticket.Price,
 		&ticket.TotalStock,
 		&ticket.RemainingStock,
