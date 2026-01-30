@@ -52,7 +52,7 @@ func LoadTestConfig() *Config {
 
 	testRedisConfig := RedisConfig{
 		Host:     "localhost",
-		Port:     "6380", // 測試 Redis 用 6380 port
+		Port:     "6379",
 		Password: "",
 		DB:       1,
 	}
