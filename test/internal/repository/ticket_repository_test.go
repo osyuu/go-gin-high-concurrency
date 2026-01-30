@@ -8,6 +8,7 @@ import (
 	"go-gin-high-concurrency/internal/repository"
 	apperrors "go-gin-high-concurrency/pkg/app_errors"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,6 +22,7 @@ func TestTicketRepository_Create(t *testing.T) {
 	ctx := context.Background()
 
 	ticket := &model.Ticket{
+		TicketID:       uuid.New(),
 		EventID:        eventID,
 		Name:           "Test Concert 2025",
 		Price:          1500.0,
@@ -74,6 +76,57 @@ func TestTicketRepository_FindByID(t *testing.T) {
 	})
 }
 
+func TestTicketRepository_FindByTicketID(t *testing.T) {
+	repo := repository.NewTicketRepository(getTestDB())
+	ctx := context.Background()
+
+	t.Run("Success", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		eventID := createTestEvent(t, "Test Event")
+		id := createTestTicket(t, eventID, "Test Event", 50)
+		ticket, err := repo.FindByID(ctx, id)
+		require.NoError(t, err)
+
+		found, err := repo.FindByTicketID(ctx, ticket.TicketID)
+
+		require.NoError(t, err)
+		assert.Equal(t, id, found.ID)
+		assert.Equal(t, ticket.TicketID, found.TicketID)
+		assert.Equal(t, eventID, found.EventID)
+		assert.Equal(t, "Test Event", found.Name)
+		assert.Equal(t, 50, found.TotalStock)
+	})
+
+	t.Run("NotFound", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		_, err := repo.FindByTicketID(ctx, uuid.New())
+
+		require.Error(t, err)
+		assert.Equal(t, apperrors.ErrTicketNotFound, err)
+	})
+
+	t.Run("DeletedTicket_NotFound", func(t *testing.T) {
+		cleanup := setupTestWithTruncate(t)
+		defer cleanup()
+
+		eventID := createTestEvent(t, "To Delete")
+		id := createTestTicket(t, eventID, "To Delete", 100)
+		ticket, err := repo.FindByID(ctx, id)
+		require.NoError(t, err)
+		err = repo.Delete(ctx, ticket.TicketID)
+		require.NoError(t, err)
+
+		_, err = repo.FindByTicketID(ctx, ticket.TicketID)
+
+		require.Error(t, err)
+		assert.Equal(t, apperrors.ErrTicketNotFound, err)
+	})
+}
+
 func TestTicketRepository_List(t *testing.T) {
 	repo := repository.NewTicketRepository(getTestDB())
 	ctx := context.Background()
@@ -118,17 +171,19 @@ func TestTicketRepository_Update(t *testing.T) {
 		defer cleanup()
 
 		eventID := createTestEvent(t, "Original")
-		ticketID := createTestTicket(t, eventID, "Original", 100)
+		id := createTestTicket(t, eventID, "Original", 100)
+		ticket, err := repo.FindByID(ctx, id)
+		require.NoError(t, err)
 		eventName := "Updated Concert"
 		price := 3000.0
 		maxPerUser := 8
-		updates := repository.UpdateTicketParams{
+		updates := model.UpdateTicketParams{
 			Name:       &eventName,
 			Price:      &price,
 			MaxPerUser: &maxPerUser,
 		}
 
-		updated, err := repo.Update(ctx, ticketID, updates)
+		updated, err := repo.Update(ctx, ticket.TicketID, updates)
 
 		require.NoError(t, err)
 		assert.Equal(t, "Updated Concert", updated.Name)
@@ -142,11 +197,11 @@ func TestTicketRepository_Update(t *testing.T) {
 		defer cleanup()
 
 		eventName := "Won't Update"
-		updates := repository.UpdateTicketParams{
+		updates := model.UpdateTicketParams{
 			Name: &eventName,
 		}
 
-		_, err := repo.Update(ctx, 99999, updates)
+		_, err := repo.Update(ctx, uuid.New(), updates)
 
 		require.Error(t, err)
 		assert.Equal(t, apperrors.ErrTicketNotFound, err)
@@ -157,10 +212,12 @@ func TestTicketRepository_Update(t *testing.T) {
 		defer cleanup()
 
 		eventID := createTestEvent(t, "Concert")
-		ticketID := createTestTicket(t, eventID, "Concert", 100)
-		updates := repository.UpdateTicketParams{}
+		id := createTestTicket(t, eventID, "Concert", 100)
+		ticket, err := repo.FindByID(ctx, id)
+		require.NoError(t, err)
+		updates := model.UpdateTicketParams{}
 
-		_, err := repo.Update(ctx, ticketID, updates)
+		_, err = repo.Update(ctx, ticket.TicketID, updates)
 
 		require.Error(t, err)
 		assert.Equal(t, apperrors.ErrInvalidInput, err)
@@ -176,13 +233,15 @@ func TestTicketRepository_Delete(t *testing.T) {
 		defer cleanup()
 
 		eventID := createTestEvent(t, "To Delete")
-		ticketID := createTestTicket(t, eventID, "To Delete", 100)
+		id := createTestTicket(t, eventID, "To Delete", 100)
+		ticket, err := repo.FindByID(ctx, id)
+		require.NoError(t, err)
 
-		err := repo.Delete(ctx, ticketID)
+		err = repo.Delete(ctx, ticket.TicketID)
 		require.NoError(t, err)
 
 		// 验证软删除后无法查到
-		_, err = repo.FindByID(ctx, ticketID)
+		_, err = repo.FindByID(ctx, id)
 		require.Error(t, err)
 		assert.Equal(t, apperrors.ErrTicketNotFound, err)
 	})
@@ -191,7 +250,7 @@ func TestTicketRepository_Delete(t *testing.T) {
 		cleanup := setupTestWithTruncate(t)
 		defer cleanup()
 
-		err := repo.Delete(ctx, 99999)
+		err := repo.Delete(ctx, uuid.New())
 
 		require.Error(t, err)
 		assert.Equal(t, apperrors.ErrTicketNotFound, err)
@@ -202,13 +261,15 @@ func TestTicketRepository_Delete(t *testing.T) {
 		defer cleanup()
 
 		eventID := createTestEvent(t, "Already Deleted")
-		ticketID := createTestTicket(t, eventID, "Already Deleted", 100)
+		id := createTestTicket(t, eventID, "Already Deleted", 100)
+		ticket, err := repo.FindByID(ctx, id)
+		require.NoError(t, err)
 
-		err := repo.Delete(ctx, ticketID)
+		err = repo.Delete(ctx, ticket.TicketID)
 		require.NoError(t, err)
 
 		// 第二次删除应该失败
-		err = repo.Delete(ctx, ticketID)
+		err = repo.Delete(ctx, ticket.TicketID)
 		require.Error(t, err)
 		assert.Equal(t, apperrors.ErrTicketNotFound, err)
 	})

@@ -2,11 +2,14 @@ package model
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Ticket 票券模型
 type Ticket struct {
 	ID             int        `json:"id" db:"id"`
+	TicketID       uuid.UUID  `json:"ticket_id" db:"ticket_id"`
 	EventID        int        `json:"event_id" db:"event_id"`
 	Name           string     `json:"name" db:"name"`
 	Price          float64    `json:"price" db:"price"`
@@ -18,6 +21,12 @@ type Ticket struct {
 	DeletedAt      *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 
 	Event *Event `json:"event" db:"-"`
+}
+
+type UpdateTicketParams struct {
+	Name       *string
+	Price      *float64
+	MaxPerUser *int
 }
 
 // IsDeleted 檢查票券是否已刪除

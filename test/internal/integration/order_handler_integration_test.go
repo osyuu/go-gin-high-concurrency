@@ -102,16 +102,19 @@ func setupIntegrationTest(t *testing.T, useFailingQueue bool) (*gin.Engine, func
 		}
 	}
 
-	// 初始化 Handler 和 Router（含 Event API，供 createTestEventViaAPI 使用）
+	// 初始化 Handler 和 Router（含 Event / Ticket API，供 createTestEventViaAPI / createTestTicketViaAPI 使用）
 	eventRepo := repository.NewEventRepository(testDB)
 	eventService := service.NewEventService(eventRepo)
 	eventHandler := handler.NewEventHandler(eventService)
+	ticketService := service.NewTicketService(ticketRepo)
+	ticketHandler := handler.NewTicketHandler(ticketService)
 
 	orderHandler := handler.NewOrderHandler(orderService)
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	orderHandler.RegisterRoutes(router)
 	eventHandler.RegisterRoutes(router)
+	ticketHandler.RegisterRoutes(router)
 
 	cleanup := func() {
 		if workerCancel != nil {
@@ -169,23 +172,25 @@ func createTestEventViaAPI(t *testing.T, router *gin.Engine, name string) int {
 	return event.ID
 }
 
+// createTestTicketViaAPI 透過 POST /api/v1/events 與 POST /api/v1/tickets 建立活動與票券，回傳 tickets.id（供訂單與庫存預熱使用）
 func createTestTicket(t *testing.T, router *gin.Engine, eventName string, price float64, totalStock, maxPerUser int) int {
 	t.Helper()
-	ctx := context.Background()
 	eventID := createTestEventViaAPI(t, router, eventName)
-	ticketRepo := repository.NewTicketRepository(testDB)
-
-	ticket := &model.Ticket{
-		EventID:        eventID,
-		Name:           eventName,
-		Price:          price,
-		TotalStock:     totalStock,
-		RemainingStock: totalStock,
-		MaxPerUser:     maxPerUser,
+	body := map[string]interface{}{
+		"event_id":     eventID,
+		"name":         eventName,
+		"price":        price,
+		"total_stock":  totalStock,
+		"max_per_user": maxPerUser,
 	}
-	created, err := ticketRepo.Create(ctx, ticket)
+	req := createHTTPRequest("POST", "/api/v1/tickets", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusCreated, w.Code, "create ticket via API: %s", w.Body.String())
+	var ticket model.Ticket
+	err := json.NewDecoder(w.Body).Decode(&ticket)
 	require.NoError(t, err)
-	return created.ID
+	return ticket.ID
 }
 
 func warmUpInventory(t *testing.T, inventoryManager cache.RedisTicketInventoryManager, ticketID int, stock int, price float64, limit int) {

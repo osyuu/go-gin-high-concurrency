@@ -7,8 +7,8 @@ package mocks
 import (
 	"context"
 	"go-gin-high-concurrency/internal/model"
-	"go-gin-high-concurrency/internal/repository"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -247,16 +247,16 @@ func (_c *MockTicketRepository_DecrementStock_Call) RunAndReturn(run func(ctx co
 }
 
 // Delete provides a mock function for the type MockTicketRepository
-func (_mock *MockTicketRepository) Delete(ctx context.Context, id int) error {
-	ret := _mock.Called(ctx, id)
+func (_mock *MockTicketRepository) Delete(ctx context.Context, ticketID uuid.UUID) error {
+	ret := _mock.Called(ctx, ticketID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Delete")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int) error); ok {
-		r0 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, ticketID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -270,20 +270,20 @@ type MockTicketRepository_Delete_Call struct {
 
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int
-func (_e *MockTicketRepository_Expecter) Delete(ctx interface{}, id interface{}) *MockTicketRepository_Delete_Call {
-	return &MockTicketRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, id)}
+//   - ticketID uuid.UUID
+func (_e *MockTicketRepository_Expecter) Delete(ctx interface{}, ticketID interface{}) *MockTicketRepository_Delete_Call {
+	return &MockTicketRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, ticketID)}
 }
 
-func (_c *MockTicketRepository_Delete_Call) Run(run func(ctx context.Context, id int)) *MockTicketRepository_Delete_Call {
+func (_c *MockTicketRepository_Delete_Call) Run(run func(ctx context.Context, ticketID uuid.UUID)) *MockTicketRepository_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 uuid.UUID
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].(uuid.UUID)
 		}
 		run(
 			arg0,
@@ -298,7 +298,7 @@ func (_c *MockTicketRepository_Delete_Call) Return(err error) *MockTicketReposit
 	return _c
 }
 
-func (_c *MockTicketRepository_Delete_Call) RunAndReturn(run func(ctx context.Context, id int) error) *MockTicketRepository_Delete_Call {
+func (_c *MockTicketRepository_Delete_Call) RunAndReturn(run func(ctx context.Context, ticketID uuid.UUID) error) *MockTicketRepository_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -445,6 +445,74 @@ func (_c *MockTicketRepository_FindByIDWithLock_Call) RunAndReturn(run func(ctx 
 	return _c
 }
 
+// FindByTicketID provides a mock function for the type MockTicketRepository
+func (_mock *MockTicketRepository) FindByTicketID(ctx context.Context, ticketID uuid.UUID) (*model.Ticket, error) {
+	ret := _mock.Called(ctx, ticketID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindByTicketID")
+	}
+
+	var r0 *model.Ticket
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*model.Ticket, error)); ok {
+		return returnFunc(ctx, ticketID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) *model.Ticket); ok {
+		r0 = returnFunc(ctx, ticketID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Ticket)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, ticketID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTicketRepository_FindByTicketID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByTicketID'
+type MockTicketRepository_FindByTicketID_Call struct {
+	*mock.Call
+}
+
+// FindByTicketID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - ticketID uuid.UUID
+func (_e *MockTicketRepository_Expecter) FindByTicketID(ctx interface{}, ticketID interface{}) *MockTicketRepository_FindByTicketID_Call {
+	return &MockTicketRepository_FindByTicketID_Call{Call: _e.mock.On("FindByTicketID", ctx, ticketID)}
+}
+
+func (_c *MockTicketRepository_FindByTicketID_Call) Run(run func(ctx context.Context, ticketID uuid.UUID)) *MockTicketRepository_FindByTicketID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTicketRepository_FindByTicketID_Call) Return(ticket *model.Ticket, err error) *MockTicketRepository_FindByTicketID_Call {
+	_c.Call.Return(ticket, err)
+	return _c
+}
+
+func (_c *MockTicketRepository_FindByTicketID_Call) RunAndReturn(run func(ctx context.Context, ticketID uuid.UUID) (*model.Ticket, error)) *MockTicketRepository_FindByTicketID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IncrementStock provides a mock function for the type MockTicketRepository
 func (_mock *MockTicketRepository) IncrementStock(ctx context.Context, tx pgx.Tx, id int, quantity int) error {
 	ret := _mock.Called(ctx, tx, id, quantity)
@@ -577,8 +645,8 @@ func (_c *MockTicketRepository_List_Call) RunAndReturn(run func(ctx context.Cont
 }
 
 // Update provides a mock function for the type MockTicketRepository
-func (_mock *MockTicketRepository) Update(ctx context.Context, id int, ticket repository.UpdateTicketParams) (*model.Ticket, error) {
-	ret := _mock.Called(ctx, id, ticket)
+func (_mock *MockTicketRepository) Update(ctx context.Context, ticketID uuid.UUID, params model.UpdateTicketParams) (*model.Ticket, error) {
+	ret := _mock.Called(ctx, ticketID, params)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
@@ -586,18 +654,18 @@ func (_mock *MockTicketRepository) Update(ctx context.Context, id int, ticket re
 
 	var r0 *model.Ticket
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int, repository.UpdateTicketParams) (*model.Ticket, error)); ok {
-		return returnFunc(ctx, id, ticket)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, model.UpdateTicketParams) (*model.Ticket, error)); ok {
+		return returnFunc(ctx, ticketID, params)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int, repository.UpdateTicketParams) *model.Ticket); ok {
-		r0 = returnFunc(ctx, id, ticket)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, model.UpdateTicketParams) *model.Ticket); ok {
+		r0 = returnFunc(ctx, ticketID, params)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.Ticket)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, int, repository.UpdateTicketParams) error); ok {
-		r1 = returnFunc(ctx, id, ticket)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, model.UpdateTicketParams) error); ok {
+		r1 = returnFunc(ctx, ticketID, params)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -611,25 +679,25 @@ type MockTicketRepository_Update_Call struct {
 
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int
-//   - ticket repository.UpdateTicketParams
-func (_e *MockTicketRepository_Expecter) Update(ctx interface{}, id interface{}, ticket interface{}) *MockTicketRepository_Update_Call {
-	return &MockTicketRepository_Update_Call{Call: _e.mock.On("Update", ctx, id, ticket)}
+//   - ticketID uuid.UUID
+//   - params model.UpdateTicketParams
+func (_e *MockTicketRepository_Expecter) Update(ctx interface{}, ticketID interface{}, params interface{}) *MockTicketRepository_Update_Call {
+	return &MockTicketRepository_Update_Call{Call: _e.mock.On("Update", ctx, ticketID, params)}
 }
 
-func (_c *MockTicketRepository_Update_Call) Run(run func(ctx context.Context, id int, ticket repository.UpdateTicketParams)) *MockTicketRepository_Update_Call {
+func (_c *MockTicketRepository_Update_Call) Run(run func(ctx context.Context, ticketID uuid.UUID, params model.UpdateTicketParams)) *MockTicketRepository_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 uuid.UUID
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 repository.UpdateTicketParams
+		var arg2 model.UpdateTicketParams
 		if args[2] != nil {
-			arg2 = args[2].(repository.UpdateTicketParams)
+			arg2 = args[2].(model.UpdateTicketParams)
 		}
 		run(
 			arg0,
@@ -640,12 +708,12 @@ func (_c *MockTicketRepository_Update_Call) Run(run func(ctx context.Context, id
 	return _c
 }
 
-func (_c *MockTicketRepository_Update_Call) Return(ticket1 *model.Ticket, err error) *MockTicketRepository_Update_Call {
-	_c.Call.Return(ticket1, err)
+func (_c *MockTicketRepository_Update_Call) Return(ticket *model.Ticket, err error) *MockTicketRepository_Update_Call {
+	_c.Call.Return(ticket, err)
 	return _c
 }
 
-func (_c *MockTicketRepository_Update_Call) RunAndReturn(run func(ctx context.Context, id int, ticket repository.UpdateTicketParams) (*model.Ticket, error)) *MockTicketRepository_Update_Call {
+func (_c *MockTicketRepository_Update_Call) RunAndReturn(run func(ctx context.Context, ticketID uuid.UUID, params model.UpdateTicketParams) (*model.Ticket, error)) *MockTicketRepository_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
