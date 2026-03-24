@@ -29,6 +29,44 @@ type RedisTicketInventoryManager interface {
 	RollbackStock(ctx context.Context, ticketID int, quantity int, userID int) error
 }
 
+// Pre-compiled Lua scripts — loaded once and executed via EVALSHA to avoid
+// retransmitting the full script body on every hot-path call.
+var (
+	decreStockScript = redis.NewScript(`
+		local ticket_key = KEYS[1]
+		local users_key = KEYS[2]
+		local user_id = tonumber(ARGV[1])
+		local request_qty = tonumber(ARGV[2])
+		local ticket_info = redis.call('HMGET', ticket_key, 'stock', 'price', 'limit')
+		local stock = ticket_info[1]
+		local price = ticket_info[2]
+		local limit = ticket_info[3]
+		if not stock or not price or not limit then
+			return {-3, '0.0'}
+		end
+		if tonumber(stock) < request_qty then
+			return {-1, '0.0'}
+		end
+		local user_bought = redis.call('HGET', users_key, user_id) or '0'
+		if tonumber(user_bought) + request_qty > tonumber(limit) then
+			return {-2, '0.0'}
+		end
+		redis.call('HINCRBY', ticket_key, 'stock', -request_qty)
+		redis.call('HINCRBY', users_key, user_id, request_qty)
+		return {1, tostring(price)}
+	`)
+
+	rollbackStockScript = redis.NewScript(`
+		local ticket_key = KEYS[1]
+		local users_key = KEYS[2]
+		local user_id = tonumber(ARGV[1])
+		local rollback_qty = tonumber(ARGV[2])
+		redis.call('HINCRBY', ticket_key, 'stock', rollback_qty)
+		redis.call('HINCRBY', users_key, user_id, -rollback_qty)
+		return "OK"
+	`)
+)
+
 type RedisTicketInventoryManagerImpl struct {
 	client *redis.Client
 }
@@ -115,47 +153,7 @@ func (m *RedisTicketInventoryManagerImpl) DecreStock(ctx context.Context, ticket
 	key := m.getInfoKey(ticketID)
 	usersKey := m.getUsersKey(ticketID)
 
-	//
-	script := `
-		-- 1. 取得參數
-		local ticket_key = KEYS[1]
-		local users_key = KEYS[2]
-
-		local user_id = tonumber(ARGV[1])
-		local request_qty = tonumber(ARGV[2])
-
-		-- 2. 取得票的資訊(總庫存、價格、個人購買限制)
-		local ticket_info = redis.call('HMGET', ticket_key, 'stock', 'price', 'limit')
-		local stock = ticket_info[1]
-		local price = ticket_info[2]
-		local limit = ticket_info[3]
-
-		-- 3. 檢查數據是否存在
-		if not stock or not price or not limit then
-			return {-3, '0.0'} -- 錯誤：票券資訊未預熱
-		end
-
-		-- 4. 檢查總庫存
-		if tonumber(stock) < request_qty then
-			return {-1, '0.0'} -- 錯誤：庫存不足
-		end
-
-		-- 3. 檢查個人已購數量
-		local user_bought = redis.call('HGET', users_key, user_id) or '0'
-		if tonumber(user_bought) + request_qty > tonumber(limit) then
-			return {-2, '0.0'} -- 錯誤：超過個人購買限制
-		end
-
-		-- 4. 執行扣減與紀錄
-		-- 扣減庫存
-		redis.call('HINCRBY', ticket_key, 'stock', -request_qty)
-		-- 增加個人購買紀錄
-		redis.call('HINCRBY', users_key, user_id, request_qty)
-
-		return {1, tostring(price)} -- 搶票成功
-	`
-
-	result, err := m.client.Eval(ctx, script, []string{key, usersKey}, userID, quantity).Result()
+	result, err := decreStockScript.Run(ctx, m.client, []string{key, usersKey}, userID, quantity).Result()
 	if err != nil {
 		return false, 0, err
 	}
@@ -185,23 +183,7 @@ func (m *RedisTicketInventoryManagerImpl) RollbackStock(ctx context.Context, tic
 	key := m.getInfoKey(ticketID)
 	usersKey := m.getUsersKey(ticketID)
 
-	script := `
-		-- 1. 取得參數
-		local ticket_key = KEYS[1]
-		local users_key = KEYS[2]
-		local user_id = tonumber(ARGV[1])
-		local rollback_qty = tonumber(ARGV[2])
-
-		-- 2. 執行回滾庫存及使用者購買紀錄
-		-- 回滾庫存
-		redis.call('HINCRBY', ticket_key, 'stock', rollback_qty)
-		-- 回滾個人購買紀錄
-		redis.call('HINCRBY', users_key, user_id, -rollback_qty)
-
-		return "OK"
-	`
-
-	_, err := m.client.Eval(ctx, script, []string{key, usersKey}, userID, quantity).Result()
+	_, err := rollbackStockScript.Run(ctx, m.client, []string{key, usersKey}, userID, quantity).Result()
 	if err != nil {
 		return err
 	}

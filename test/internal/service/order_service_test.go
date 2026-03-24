@@ -124,7 +124,6 @@ func TestOrderService_DispatchOrder(t *testing.T) {
 		expectedOrder := &model.Order{ID: 1, RequestID: "123", UserID: 1, TicketID: 10, Quantity: 2, TotalPrice: 100.0, Status: model.OrderStatusPending}
 		// Mock
 		orderRepo.EXPECT().Create(ctx, mock.Anything, mock.Anything).Return(expectedOrder, nil)
-		ticketRepo.EXPECT().FindByID(ctx, 10).Return(&model.Ticket{ID: 10}, nil).Once()
 		ticketRepo.EXPECT().DecrementStock(ctx, mock.Anything, 10, 2).Return(nil).Once()
 
 		// 執行
@@ -146,7 +145,6 @@ func TestOrderService_DispatchOrder(t *testing.T) {
 
 		// Mock
 		orderRepo.EXPECT().Create(ctx, mock.Anything, mock.Anything).Return(&model.Order{ID: 1, UserID: 1, TicketID: 10, Quantity: 2, TotalPrice: 100.0, Status: model.OrderStatusPending}, nil).Once()
-		ticketRepo.EXPECT().FindByID(ctx, 10).Return(&model.Ticket{ID: 10}, nil).Once()
 		ticketRepo.EXPECT().DecrementStock(ctx, mock.Anything, 10, 2).Return(errors.New("db error")).Once()
 
 		// 執行

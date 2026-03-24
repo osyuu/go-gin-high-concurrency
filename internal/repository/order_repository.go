@@ -79,7 +79,7 @@ func (r *OrderRepositoryImpl) List(ctx context.Context) ([]*model.Order, error) 
 	}
 	defer rows.Close()
 
-	var orders []*model.Order
+	orders := make([]*model.Order, 0, 32)
 
 	for rows.Next() {
 		var order model.Order
@@ -190,7 +190,7 @@ func (r *OrderRepositoryImpl) FindByUserID(ctx context.Context, userID int) ([]*
 	}
 	defer rows.Close()
 
-	var orders []*model.Order
+	orders := make([]*model.Order, 0, 16)
 
 	for rows.Next() {
 		var order model.Order

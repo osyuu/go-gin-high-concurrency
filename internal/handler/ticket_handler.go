@@ -136,7 +136,7 @@ func (h *TicketHandler) DeleteByTicketID(c *gin.Context) {
 }
 
 func (h *TicketHandler) handleError(c *gin.Context, err error, operation string) {
-	log := logger.WithComponent("handler").With(zap.String("operation", operation), zap.Error(err))
+	log := logger.Handler.With(zap.String("operation", operation), zap.Error(err))
 	switch {
 	case err == apperrors.ErrTicketNotFound:
 		log.Warn("Ticket not found")

@@ -109,7 +109,7 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 // Helper functions
 
 func (h *OrderHandler) handleOrderError(c *gin.Context, err error, operation string) {
-	log := logger.WithComponent("handler").With(zap.String("operation", operation), zap.Error(err))
+	log := logger.Handler.With(zap.String("operation", operation), zap.Error(err))
 	switch {
 	case errors.Is(err, apperrors.ErrInsufficientStock):
 		log.Warn("Insufficient stock")

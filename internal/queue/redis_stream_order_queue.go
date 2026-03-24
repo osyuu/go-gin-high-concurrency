@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go-gin-high-concurrency/internal/model"
 	"go-gin-high-concurrency/pkg/logger"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,6 +41,7 @@ type RedisStreamOrderQueueImpl struct {
 	groupName    string
 	consumerName string
 	cfg          RedisStreamOrderQueueConfig
+	orderPool    sync.Pool
 }
 
 // NewRedisStreamOrderQueue 建立 Redis Stream 版 OrderQueue。config 可為 nil，則使用預設逾時與重試次數。
@@ -65,6 +67,9 @@ func NewRedisStreamOrderQueue(client *redis.Client, consumerID string, config *R
 		groupName:    ConsumerGroupName,
 		consumerName: fmt.Sprintf("%s:%s", ConsumerNamePrefix, consumerID),
 		cfg:          cfg,
+		orderPool: sync.Pool{
+			New: func() interface{} { return new(model.Order) },
+		},
 	}
 	ctx := context.Background()
 	if err := q.ensureConsumerGroup(ctx); err != nil {
@@ -89,7 +94,7 @@ func (q *RedisStreamOrderQueueImpl) PublishOrder(ctx context.Context, order *mod
 	_, err = q.client.XAdd(ctx, &redis.XAddArgs{
 		Stream: q.streamKey,
 		ID:     "*",
-		Values: map[string]interface{}{"order": string(orderJSON)},
+		Values: []interface{}{"order", string(orderJSON)},
 	}).Result()
 	if err != nil {
 		return fmt.Errorf("xadd: %w", err)
@@ -134,7 +139,7 @@ func (q *RedisStreamOrderQueueImpl) readAndDeliver(ctx context.Context, out chan
 		return
 	}
 	if err != nil {
-		logger.WithComponent("mq").Error("XReadGroup failed", zap.Error(err))
+		logger.MQ.Error("XReadGroup failed", zap.Error(err))
 		time.Sleep(time.Second)
 		return
 	}
@@ -163,11 +168,11 @@ func (q *RedisStreamOrderQueueImpl) shouldProcessMessage(ctx context.Context, me
 	}
 	n, err := q.getMessageRetryCount(ctx, messageID)
 	if err != nil {
-		logger.WithComponent("mq").Warn("getMessageRetryCount failed", zap.String("message_id", messageID), zap.Error(err))
+		logger.MQ.Warn("getMessageRetryCount failed", zap.String("message_id", messageID), zap.Error(err))
 		return true
 	}
 	if n >= q.cfg.MaxRetryCount {
-		logger.WithComponent("mq").Warn("discard poison message", zap.String("message_id", messageID), zap.Int("retries", n), zap.Int("max_retries", q.cfg.MaxRetryCount))
+		logger.MQ.Warn("discard poison message", zap.String("message_id", messageID), zap.Int("retries", n), zap.Int("max_retries", q.cfg.MaxRetryCount))
 		_ = q.client.XAck(ctx, q.streamKey, q.groupName, messageID).Err()
 		return false
 	}
@@ -215,7 +220,7 @@ func (q *RedisStreamOrderQueueImpl) runAutoClaim(ctx context.Context, out chan<-
 			}).Result()
 
 			if err != nil && err != redis.Nil {
-				logger.WithComponent("mq").Error("XAutoClaim failed", zap.Error(err))
+				logger.MQ.Error("XAutoClaim failed", zap.Error(err))
 				continue
 			}
 			if nextID != "" && nextID != "0-0" {
@@ -245,30 +250,34 @@ func (q *RedisStreamOrderQueueImpl) runAutoClaim(ctx context.Context, out chan<-
 func (q *RedisStreamOrderQueueImpl) newDelivery(ctx context.Context, msg redis.XMessage) *Delivery {
 	orderJSON, ok := msg.Values["order"].(string)
 	if !ok {
-		logger.WithComponent("mq").Warn("invalid message: missing order field", zap.String("message_id", msg.ID))
+		logger.MQ.Warn("invalid message: missing order field", zap.String("message_id", msg.ID))
 		return nil
 	}
-	var order model.Order
-	if err := json.Unmarshal([]byte(orderJSON), &order); err != nil {
-		logger.WithComponent("mq").Warn("unmarshal order failed", zap.String("message_id", msg.ID), zap.Error(err))
+	order := q.orderPool.Get().(*model.Order)
+	*order = model.Order{} // reset before reuse to clear stale fields (e.g. DeletedAt omitempty)
+	if err := json.Unmarshal([]byte(orderJSON), order); err != nil {
+		logger.MQ.Warn("unmarshal order failed", zap.String("message_id", msg.ID), zap.Error(err))
+		q.orderPool.Put(order)
 		return nil
 	}
 	msgID := msg.ID
 	return &Delivery{
-		Data: &order,
+		Data: order,
 		Ack: func() {
+			q.orderPool.Put(order)
 			if err := q.client.XAck(ctx, q.streamKey, q.groupName, msgID).Err(); err != nil {
-				logger.WithComponent("mq").Error("XAck failed", zap.String("message_id", msgID), zap.Error(err))
+				logger.MQ.Error("XAck failed", zap.String("message_id", msgID), zap.Error(err))
 			}
 		},
 		Nack: func(requeue bool) {
+			q.orderPool.Put(order)
 			if requeue {
 				// 不做任何事：消息留在 PEL，等 ClaimMinIdleTime 後由 XAUTOCLAIM 領取，形成延遲重試
-				logger.WithComponent("mq").Info("message nack(requeue), will retry", zap.String("message_id", msgID), zap.Duration("claim_min_idle", q.cfg.ClaimMinIdleTime))
+				logger.MQ.Info("message nack(requeue), will retry", zap.String("message_id", msgID), zap.Duration("claim_min_idle", q.cfg.ClaimMinIdleTime))
 				return
 			}
 			if err := q.client.XAck(ctx, q.streamKey, q.groupName, msgID).Err(); err != nil {
-				logger.WithComponent("mq").Error("XAck discard failed", zap.String("message_id", msgID), zap.Error(err))
+				logger.MQ.Error("XAck discard failed", zap.String("message_id", msgID), zap.Error(err))
 			}
 		},
 	}

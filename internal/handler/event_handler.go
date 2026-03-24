@@ -127,7 +127,7 @@ func (h *EventHandler) OpenForSale(c *gin.Context) {
 }
 
 func (h *EventHandler) handleError(c *gin.Context, err error, operation string) {
-	log := logger.WithComponent("handler").With(zap.String("operation", operation), zap.Error(err))
+	log := logger.Handler.With(zap.String("operation", operation), zap.Error(err))
 	switch {
 	case err == apperrors.ErrEventNotFound:
 		log.Warn("Event not found")

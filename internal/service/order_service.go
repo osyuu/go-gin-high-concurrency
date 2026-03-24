@@ -76,7 +76,7 @@ func (s *OrderServiceImpl) PrepareOrder(ctx context.Context, req model.CreateOrd
 	// 1. 嘗試發送 MQ：ctx跟隨請求的生命週期，用戶不等了就取消
 	err = s.orderQueue.PublishOrder(ctx, order)
 	if err != nil {
-		logger.WithComponent("service").Error("failed to publish order", zap.Error(err))
+		logger.Service.Error("failed to publish order", zap.Error(err))
 		// MQ紀錄失敗，回滾庫存(絕對不能讓使用者搶到票, 所以不使用go routine)
 		// 2. 回滾庫存：RollbackStock使用context.Background()傳遞, 確保RollbackStock一定會執行
 		s.inventoryManager.RollbackStock(context.Background(), req.TicketID, req.Quantity, req.UserID)
@@ -99,13 +99,8 @@ func (s *OrderServiceImpl) DispatchOrder(ctx context.Context, order *model.Order
 		return err
 	}
 
-	// 更新票券庫存
-	ticket, err := s.ticketRepository.FindByID(ctx, createdOrder.TicketID)
-	if err != nil {
-		return err
-	}
-
-	err = s.ticketRepository.DecrementStock(ctx, tx, ticket.ID, createdOrder.Quantity)
+	// 更新票券庫存（createdOrder.TicketID 即為票券的 DB ID，無需額外查詢）
+	err = s.ticketRepository.DecrementStock(ctx, tx, createdOrder.TicketID, createdOrder.Quantity)
 	if err != nil {
 		return err
 	}
