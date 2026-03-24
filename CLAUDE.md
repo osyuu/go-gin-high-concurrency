@@ -70,6 +70,11 @@ mockery
 
 應用程式從環境變數讀設定，預設值見 `config/config.go`。測試環境固定使用 port 5433 / Redis DB 1（見 `config.LoadTestConfig()`）。
 
+## Commit 規範
+
+- commit message 不得出現任何 AI 編輯相關描述（如 "Co-Authored-By: Claude"、"Generated with Claude" 等）
+- 格式：`<type>: <description>`，type 使用 feat / fix / refactor / perf / test / docs / chore
+
 ## 重要設計決策
 
 - **Lua 腳本**：`DecreStock` / `RollbackStock` 使用 `redis.NewScript()` 預編譯，以 EVALSHA 執行，避免每次發送完整腳本

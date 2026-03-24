@@ -13,7 +13,7 @@ import (
 var testRdb *redis.Client
 
 func TestMain(m *testing.M) {
-	_, rdb, cleanup, err := testutil.Setup()
+	rdb, cleanup, err := testutil.SetupRedisOnly()
 	if err != nil {
 		log.Fatalf("Failed to setup test environment: %v", err)
 	}

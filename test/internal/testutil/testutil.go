@@ -32,7 +32,7 @@ func Setup() (*pgxpool.Pool, *redis.Client, func(), error) {
 	}
 	log.Println("Test redis connected successfully")
 
-	log.Println("Running service tests...")
+	log.Println("Test environment ready")
 
 	cleanup := func() {
 		testDB.Close()
